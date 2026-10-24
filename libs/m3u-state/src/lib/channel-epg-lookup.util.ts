@@ -43,9 +43,30 @@ export function resolveRawChannelEpgLookupKey(
     );
 }
 
+/**
+ * Channel-specific alias key used only if the provider reused one raw EPG
+ * key for several different stations. Never persisted or sent to XMLTV.
+ * Include both playlist item identity and visible name so a partial playlist
+ * refresh cannot accidentally reuse another station's alias.
+ */
+export function channelScopedEpgAliasKey(
+    channel: Channel | null | undefined
+): string {
+    return `m3u-channel:${JSON.stringify([
+        resolveRawChannelEpgLookupKey(channel),
+        channel?.id ?? '',
+        channel?.url ?? '',
+        channel?.name ?? '',
+    ])}`;
+}
+
 export function resolveChannelEpgLookupKey(
     channel: Channel | null | undefined
 ): string {
     const key = resolveRawChannelEpgLookupKey(channel);
-    return exactEpgNameAliases.get(key) ?? key;
+    return (
+        exactEpgNameAliases.get(channelScopedEpgAliasKey(channel)) ??
+        exactEpgNameAliases.get(key) ??
+        key
+    );
 }
