@@ -4,7 +4,7 @@ import {
     createXmltvIdentityIndex,
     resolveOrderedXmltvId,
 } from '@iptvnator/shared/interfaces';
-import { resolveRawChannelEpgLookupKey } from './channel-epg-lookup.util';
+import { channelScopedEpgAliasKey, resolveRawChannelEpgLookupKey } from './channel-epg-lookup.util';
 
 export interface ExactEpgChannel extends XmltvChannelIdentity {}
 
@@ -23,6 +23,10 @@ export function buildExactEpgNameAliases(
 ): Map<string, string> {
     const index = createXmltvIdentityIndex(epgChannels);
     const proposed = new Map<string, string | null>();
+    // Keep per-channel matches only to handle raw keys reused for different
+    // stations, e.g. a provider giving BBC EARTH and BEINSPORTS the same ID.
+    // Normal playlists retain one lightweight raw-key mapping per guide ID.
+    const resolvedChannels: Array<{ channel: Channel; key: string; match: string }> = [];
 
     for (const channel of playlistChannels) {
         const key = resolveRawChannelEpgLookupKey(channel);
@@ -40,18 +44,25 @@ export function buildExactEpgNameAliases(
             index.names,
             order,
         );
-        if (!matched || matched === key) continue;
+        if (!matched) continue;
 
+        resolvedChannels.push({ channel, key, match: matched });
         if (!proposed.has(key)) {
             proposed.set(key, matched);
         } else if (proposed.get(key) !== matched) {
+            // Do not apply one station's EPG to all channels sharing its key.
             proposed.set(key, null);
         }
     }
 
-    return new Map(
-        Array.from(proposed).filter(
-            (entry): entry is [string, string] => entry[1] !== null
-        )
-    );
+    const aliases = new Map<string, string>();
+    for (const [key, match] of proposed) {
+        if (match && match !== key) aliases.set(key, match);
+    }
+    for (const { channel, key, match } of resolvedChannels) {
+        if (proposed.get(key) === null && match !== key) {
+            aliases.set(channelScopedEpgAliasKey(channel), match);
+        }
+    }
+    return aliases;
 }
