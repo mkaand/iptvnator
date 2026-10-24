@@ -108,16 +108,49 @@ describe('exact XMLTV display name fallback', () => {
         ).toBe('new-id');
     });
 
-    it('avoids conflicting mappings for a shared tvg-id', () => {
-        expect(
-            buildExactEpgNameAliases(
-                [channel('A2 HD', 'shared'), channel('BBC', 'shared')],
-                [
-                    { id: 'a2', displayName: 'A2 HD' },
-                    { id: 'bbc', displayName: 'BBC' },
-                ]
-            ).size
-        ).toBe(0);
+    it('resolves separate channels with a reused provider tvg-id to their own guides', () => {
+        const a2 = channel('A2 HD', 'shared');
+        const bbc = channel('BBC EARTH HD', 'shared');
+        const aliases = buildExactEpgNameAliases(
+            [a2, bbc],
+            [
+                { id: 'epg.a2', displayName: 'A2 HD' },
+                { id: 'epg.bbc', displayName: 'BBC EARTH HD' },
+            ]
+        );
+        expect(aliases.has('shared')).toBe(false);
+        replaceExactEpgNameAliases(aliases);
+        expect(resolveChannelEpgLookupKey(a2)).toBe('epg.a2');
+        expect(resolveChannelEpgLookupKey(bbc)).toBe('epg.bbc');
+        expect(resolveRawChannelEpgLookupKey(a2)).toBe('shared');
+    });
+
+    it('does not let a matched guide ID override another channel sharing the raw key', () => {
+        const a2 = channel('A2 HD', 'epg.a2');
+        const bbc = channel('BBC EARTH HD', 'epg.a2');
+        replaceExactEpgNameAliases(buildExactEpgNameAliases(
+            [a2, bbc],
+            [
+                { id: 'epg.a2', displayName: 'A2 HD' },
+                { id: 'epg.bbc', displayName: 'BBC EARTH HD' },
+            ]
+        ));
+        expect(resolveChannelEpgLookupKey(a2)).toBe('epg.a2');
+        expect(resolveChannelEpgLookupKey(bbc)).toBe('epg.bbc');
+    });
+
+    it('keeps manual mappings authoritative when two channels share a raw key', () => {
+        const a2 = channel('A2 HD', 'shared');
+        const bbc = channel('BBC EARTH HD', 'shared');
+        const aliases = buildExactEpgNameAliases(
+            [a2, bbc],
+            [
+                { id: 'epg.a2', displayName: 'A2 HD' },
+                { id: 'epg.bbc', displayName: 'BBC EARTH HD' },
+            ],
+            { shared: 'manual.guide' }
+        );
+        expect(aliases.size).toBe(0);
     });
 
     it('keeps the original lookup behavior until an alias exists', () => {
