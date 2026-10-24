@@ -18,6 +18,7 @@ This fork focuses on two practical desktop IPTV workflows: automatically organiz
 | Xtream guide source | Provider EPG and externally supplied XMLTV | **Configured XMLTV First / Xtream Provider EPG First** selection plus XMLTV fallback by channel name |
 | Xtream list EPG | Existing preview refresh paths | Refresh visible-channel programme previews on async category load and category switching without clicking a channel |
 | M3U active timeline | Lookup at channel selection time | Re-query an active channel if its asynchronous XMLTV name/ID association changes; ignore stale older query responses |
+| Reused M3U tvg-id | Different playlist channels can incorrectly share a lookup key | Retain per-channel XMLTV associations when a provider assigns the same tvg-id to stations with different exact names |
 | Windows preview builds | Official upstream release process | Fork-specific version labels, automated regression tests, and unsigned Windows x64 installer artifacts |
 
 ### 📺 M3U content organization
@@ -52,13 +53,13 @@ The next field is tried only when no usable XMLTV channel match was found. Saved
 ### 🔧 Scope, compatibility, and downloads
 
 - **Desktop:** Windows x64 NSIS preview installers are built by the fork's [GitHub Actions workflow](https://github.com/mkaand/iptvnator/actions/workflows/epg-name-fallback-windows.yml). Look for a successful run on a feature/fix branch and its **Artifacts** section. Artifacts expire; they are not permanent public releases.
-- **Versioning:** fork builds carry descriptive suffixes (for example, `0.25.0-epgpriority.5`) to distinguish them from upstream releases.
+- **Versioning:** fork builds carry descriptive suffixes (for example, `0.25.0-epgpriority.6`) to distinguish them from upstream releases.
 - **Updates:** an official upstream update can replace fork-only features. Do not install an upstream update over this preview build without checking whether the relevant changes have been integrated.
 - **Privacy:** your EPG/playlist URL, database, credentials, and WebGrab EPG Manager do not need to be modified to use these features. Avoid posting private playlist URLs or Xtream credentials in bug reports.
 - **Platform coverage:** EPG matching through the native XMLTV database is desktop-oriented; browser/PWA builds may lack the required Electron bridge operations.
 - **Quality status:** automated tests cover the matching rules, duplicates, large-library classification, M3U/Xtream regressions, settings, and Windows packaging. Real-provider reception and guide content still require manual acceptance testing.
 
-**Development branches:** [EPG priority](https://github.com/mkaand/iptvnator/tree/feat/epg-configurable-match-priority) · [M3U classification](https://github.com/mkaand/iptvnator/tree/feat/m3u-content-classification) · [Xtream initial list refresh](https://github.com/mkaand/iptvnator/tree/fix/xtream-epg-visible-list-initial-refresh) · [First Exact Match](https://github.com/mkaand/iptvnator/tree/feat/epg-first-exact-match).
+**Development branches:** [EPG priority](https://github.com/mkaand/iptvnator/tree/feat/epg-configurable-match-priority) · [M3U classification](https://github.com/mkaand/iptvnator/tree/feat/m3u-content-classification) · [Xtream initial list refresh](https://github.com/mkaand/iptvnator/tree/fix/xtream-epg-visible-list-initial-refresh) · [First Exact Match](https://github.com/mkaand/iptvnator/tree/feat/epg-first-exact-match) · [M3U EPG collision fix](https://github.com/mkaand/iptvnator/tree/fix/m3u-epg-colliding-tvg-ids).
 
 **Upstream references:** [official IPTVnator](https://github.com/4gray/iptvnator) · [original EPG matching report, issue #1992](https://github.com/4gray/iptvnator/issues/1992). If you discover a bug in fork-only code, please use [issues in this fork](https://github.com/mkaand/iptvnator/issues) rather than attributing it to upstream.
 
