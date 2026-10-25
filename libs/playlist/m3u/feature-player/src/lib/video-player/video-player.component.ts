@@ -1,3 +1,4 @@
+import { rememberLastPlayedLive } from '@iptvnator/shared/interfaces';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {
     Component,
@@ -34,6 +35,7 @@ import {
     isDashStreamUrl,
     isLikelyM3uMovie,
     buildM3uContentIndex,
+    m3uContentOverrideKey,
     type M3uContentKind,
     isLikelyM3uVod,
     isM3uCatchupPlaybackSupported,
@@ -351,12 +353,11 @@ export class VideoPlayerComponent
     readonly selectedSidebarGroup = signal<string | null>(null);
     readonly canOpenGuide = computed(() => {
         const channel = this.activeChannel();
-        return (
-            this.supportsEpg &&
-            !!channel &&
-            channel.radio !== 'true' &&
-            !this.showMovieDetail()
-        );
+        // The guide is a channel discovery view too: the header grid
+        // should work before a live channel has been selected.
+        return this.supportsEpg &&
+            this.guideChannels().length > 0 &&
+            (!channel || (channel.radio !== 'true' && !this.showMovieDetail()));
     });
     /**
      * Programme shown in the docked strip (catch-up selection wins). The
@@ -719,15 +720,35 @@ export class VideoPlayerComponent
     );
 
     /** Computed once per channel-array identity; the original objects are retained. */
-    readonly contentIndex = computed(() => buildM3uContentIndex(this.channels()));
+    readonly contentOverrides = computed(() =>
+        this.activePlaylistMeta()?.m3uContentOverrides ?? {}
+    );
+    readonly contentIndex = computed(() => buildM3uContentIndex(
+        this.channels(), this.contentOverrides()
+    ));
     readonly categoryView = computed<M3uContentKind | null>(() => {
         const base = this.activeView().replace(/-(?:groups|favorites)$/, '');
         return base === 'live' || base === 'movies' ||
             base === 'series' || base === 'unclassified' ? base : null;
     });
+    private readonly favoriteEpgKeys = this.store.selectSignal(selectFavorites);
+    /**
+     * The unrestricted M3U can have 80k+ movies and episodes. The root
+     * Favorites view must not send those entries to XMLTV bulk matching.
+     * Include actual live channels plus any bookmarked outliers; keep the
+     * original Channel objects and EPG per-entry identity.
+     */
     readonly sidebarChannels = computed(() => {
         const kind = this.categoryView();
-        return kind ? this.contentIndex()[kind] : this.channels();
+        if (kind) return this.contentIndex()[kind];
+        if (this.activeView() !== 'favorites') return this.channels();
+        const live = this.contentIndex().live;
+        const all = this.channels();
+        const favorites = new Set(this.favoriteEpgKeys());
+        if (favorites.size === 0) return live;
+        const seen = new Set(live.map(channel => channel.url));
+        const extras = all.filter(channel => favorites.has(channel.url) && !seen.has(channel.url));
+        return extras.length ? [...live, ...extras] : live;
     });
     readonly sidebarPresentationView = computed(() => {
         const view = this.activeView();
@@ -757,6 +778,18 @@ export class VideoPlayerComponent
             channel.name === active.name
         );
     });
+
+    onCatalogContentTypeChanged(change: { channel: Channel; kind: M3uContentKind | null }): void {
+        const playlist = this.activePlaylistMeta();
+        if (!playlist || playlist.serverUrl || playlist.macAddress) return;
+        const key = m3uContentOverrideKey(change.channel);
+        const overrides = { ...(playlist.m3uContentOverrides ?? {}) };
+        if (change.kind === null) delete overrides[key];
+        else overrides[key] = change.kind;
+        this.store.dispatch(PlaylistActions.updatePlaylistMeta({
+            playlist: { _id: playlist._id, m3uContentOverrides: overrides } as PlaylistMeta,
+        }));
+    }
 
     openCatalogEntry(channel: Channel): void {
         this.store.dispatch(ChannelActions.setActiveChannel({ channel }));
@@ -1368,6 +1401,9 @@ export class VideoPlayerComponent
                 } as PlaylistMeta,
             })
         );
+        if (channel.radio !== 'true' && !isLikelyM3uVod(channel)) {
+            rememberLastPlayedLive({ sourceType: 'm3u', playlistId, itemId: channel.url });
+        }
     }
 
     private clearConsumedChannelOpenState(): void {

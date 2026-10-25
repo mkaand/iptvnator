@@ -11,9 +11,9 @@ import {
 } from '@angular/core';
 import type { Channel } from '@iptvnator/shared/interfaces';
 import { releaseTagYear } from '@iptvnator/shared/interfaces';
-import { buildM3uSeriesCatalog } from '@iptvnator/shared/m3u-utils';
+import { buildM3uSeriesCatalog, m3uContentOverrideKey, type M3uContentKind } from '@iptvnator/shared/m3u-utils';
 import type { M3uSeries } from '@iptvnator/shared/m3u-utils';
-import { TmdbEnrichmentService, tmdbPosterUrl } from '@iptvnator/services';
+import { TmdbEnrichmentService, tmdbPosterUrl, type TmdbTvDetails } from '@iptvnator/services';
 
 const MOVIE_PAGE_SIZE = 36;
 const SERIES_PAGE_SIZE = 48;
@@ -37,6 +37,18 @@ export class M3uMediaCatalogComponent {
     readonly kind = input.required<'movies' | 'series'>();
     readonly channels = input.required<readonly Channel[]>();
     readonly selected = output<Channel>();
+    readonly contentOverrides = input<Readonly<Record<string, M3uContentKind>>>({});
+    readonly contentTypeChanged = output<{ channel: Channel; kind: M3uContentKind | null }>();
+
+    currentContentType(channel: Channel): string {
+        return this.contentOverrides()[m3uContentOverrideKey(channel)] ?? 'automatic';
+    }
+    changeContentType(channel: Channel, event: Event): void {
+        const value = (event.target as HTMLSelectElement).value;
+        const kind: M3uContentKind | null = value === 'live' || value === 'movies' ||
+            value === 'series' || value === 'unclassified' ? value : null;
+        this.contentTypeChanged.emit({ channel, kind });
+    }
 
     readonly query = signal('');
     readonly groupFilter = signal('');
@@ -48,6 +60,23 @@ export class M3uMediaCatalogComponent {
     readonly posterOverrides = signal<ReadonlyMap<string, string>>(new Map());
 
     private readonly attemptedPosters = new Set<string>();
+    private readonly attemptedSeries = new Set<string>();
+    readonly seriesDetails = signal<ReadonlyMap<string, TmdbTvDetails>>(new Map());
+
+    seriesPoster(series: M3uSeries): string | null {
+        return tmdbPosterUrl(this.seriesDetails().get(series.key)?.poster_path);
+    }
+    seriesDescription(series: M3uSeries): string {
+        return this.seriesDetails().get(series.key)?.overview?.trim() ?? '';
+    }
+    seriesYear(series: M3uSeries): string {
+        return this.seriesDetails().get(series.key)?.first_air_date?.slice(0, 4) ?? '';
+    }
+    seriesRating(series: M3uSeries): string {
+        const score = this.seriesDetails().get(series.key)?.vote_average;
+        return typeof score === 'number' && score > 0 ? score.toFixed(1) : '';
+    }
+
 
     readonly groups = computed(() =>
         Array.from(new Set(
@@ -127,6 +156,18 @@ export class M3uMediaCatalogComponent {
 
     constructor() {
         effect(() => {
+            const entries = this.seriesPage();
+            if (this.kind() !== 'series' || !this.tmdb.isEnabled()) return;
+            // Enrich every series on the current *bounded* 48-card page.
+            // Limiting this to the first eight permanently starved all later
+            // rows, because attemptedSeries is not a reactive signal and the
+            // effect never ran again to schedule the remaining cards. Requests
+            // remain sequential and never scan the full series library.
+            const candidates = entries.filter(s => !this.attemptedSeries.has(s.key));
+            for (const entry of candidates) this.attemptedSeries.add(entry.key);
+            untracked(() => { void this.resolveSeriesMetadata(candidates); });
+        });
+        effect(() => {
             const entries = this.moviePage();
             if (this.kind() !== 'movies' || !this.tmdb.isEnabled()) return;
             // Max eight *missing* posters per visited page. Never batch-query
@@ -137,6 +178,23 @@ export class M3uMediaCatalogComponent {
             for (const channel of candidates) this.attemptedPosters.add(this.entryKey(channel));
             untracked(() => { void this.resolveMissingPosters(candidates); });
         });
+    }
+
+    private async resolveSeriesMetadata(entries: readonly M3uSeries[]): Promise<void> {
+        for (const item of entries) {
+            try {
+                const details = await this.tmdb.enrichTv({ title: item.title });
+                if (details) {
+                    this.seriesDetails.update(current => {
+                        const next = new Map(current);
+                        next.set(item.key, details);
+                        return next;
+                    });
+                }
+            } catch {
+                // TMDB is optional; catalog and playback remain available.
+            }
+        }
     }
 
     private async resolveMissingPosters(entries: readonly Channel[]): Promise<void> {

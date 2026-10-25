@@ -63,6 +63,7 @@ import { createWebPlayerApplicationState } from './web-player-application-state'
 import { resolveWebPlayerMediaTitle } from './web-player-playback-state';
 import { createChannelPanelAvailability } from './web-player-channel-panel-state';
 import { WebPlayerLiveAutoFormat } from './web-player-live-auto-format';
+import { isAmbiguousStreamUrl } from './ambiguous-stream-format.util';
 import { WebPlayerRecoveryController } from './web-player-recovery-controller';
 import {
     isPlaybackExternallyTransferable,
@@ -200,12 +201,27 @@ export class WebPlayerViewComponent implements OnDestroy {
     // reach an already-mounted player without a remount. A saved managed
     // MPV/VLC retains the mounted engine (resolveRenderableWebPlayer),
     // because this view can neither render nor launch external players.
-    private readonly renderablePlayer = linkedSignal({
-        source: () =>
-            this.playerOverride() ??
-            this.settingsStore.player?.() ??
-            VideoPlayer.VideoJs,
-        computation: resolveRenderableWebPlayer,
+    private readonly renderablePlayer = linkedSignal<
+        { configured: VideoPlayer; streamUrl: string },
+        VideoPlayer
+    >({
+        source: () => ({
+            configured: this.playerOverride() ??
+                this.settingsStore.player?.() ??
+                VideoPlayer.VideoJs,
+            streamUrl: this.streamUrl(),
+        }),
+        computation: ({ configured, streamUrl }, previous) => {
+            const resolved = resolveRenderableWebPlayer(configured, previous);
+            // For server-script/extensionless HTTP media, Video.js has a
+            // MIME-aware HLS/TS path and provides standard HTML video PiP.
+            // Do not force Chromium HTML5 down a guessed MPEG-TS loader.
+            if (resolved === VideoPlayer.Html5Player &&
+                isAmbiguousStreamUrl(streamUrl)) {
+                return VideoPlayer.VideoJs;
+            }
+            return resolved;
+        },
     });
     readonly selectedPlayer = computed<VideoPlayer>(() => {
         const temporary = this.recoverySession.temporaryPlayerOverride();
@@ -267,6 +283,7 @@ export class WebPlayerViewComponent implements OnDestroy {
             this.externalFallbackRequested.emit(request),
     });
     readonly playbackDiagnostic = this.recovery.playbackDiagnostic;
+    readonly autoRetryAttempt = this.recovery.autoRetryAttempt;
     readonly visiblePlaybackDiagnostic =
         this.recovery.visiblePlaybackDiagnostic;
     readonly recommendations = this.recovery.recommendations;
@@ -358,6 +375,7 @@ export class WebPlayerViewComponent implements OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this.recovery.destroy();
         this.liveAutoFormat.destroy();
         this.externalRecovery.destroy();
         this.applicationHandoff.destroy();
@@ -378,8 +396,10 @@ export class WebPlayerViewComponent implements OnDestroy {
                 this.playbackApplicationToken()
             ) &&
             !this.liveAutoFormat.pending()
-        )
+        ) {
+            this.recovery.playbackStarted();
             this.liveAutoFormat.started();
+        }
     }
 
     handleTimeUpdate(

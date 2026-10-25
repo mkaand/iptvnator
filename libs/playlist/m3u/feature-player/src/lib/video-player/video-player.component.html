@@ -43,6 +43,7 @@
             [channelsLoading]="channelsLoading()"
             [activeView]="sidebarPresentationView()"
             [enableEpg]="allowSectionEpg()"
+            [enableContentReclassification]="true"
             [sidebarWidth]="sidebarWidth()"
             (sidebarWidthRequested)="onGroupedSidebarWidthRequested($event)"
             (sidebarWidthRequestEnded)="
@@ -94,7 +95,9 @@
         <app-m3u-media-catalog
             [kind]="catalogKind()"
             [channels]="sidebarChannels()"
+            [contentOverrides]="contentOverrides()"
             (selected)="openCatalogEntry($event)"
+            (contentTypeChanged)="onCatalogContentTypeChanged($event)"
         />
     } @else if (activeChannel(); as activeChannel) {
         @if (showMovieDetail()) {
