@@ -6,6 +6,7 @@ import {
     PlaybackRecoverySession,
 } from './playback-recovery-session';
 import type { WebPlayerApplicationToken } from './web-player-application-state';
+import { isAmbiguousStreamUrl, probeAmbiguousStreamFormat } from './ambiguous-stream-format.util';
 import {
     createVideoJsOptions,
     createWebPlayerChannel,
@@ -42,11 +43,12 @@ export class WebPlayerApplicationHandoffCoordinator {
         this.activeOwnership = Object.freeze({ binding, token });
         const headerSync = this.streamHeaders.apply(playback);
         this.headerScopeStreamUrl = playback.streamUrl;
-        const acceptSource = (): void => {
+        const acceptSource = (detectedFormat: 'hls' | 'mpegts' | null = null): void => {
             const options = createVideoJsOptions({
                 streamUrl: playback.streamUrl,
                 isLive,
                 reloadToken,
+                detectedFormat,
             });
             accept({
                 channel: createWebPlayerChannel(playback),
@@ -56,13 +58,27 @@ export class WebPlayerApplicationHandoffCoordinator {
                 },
             });
         };
+        const acceptWithFormat = (): void => {
+            if (binding.target !== 'videojs' ||
+                !isAmbiguousStreamUrl(playback.streamUrl)) {
+                acceptSource();
+                return;
+            }
+            // The response MIME of extensionless endpoints can be HLS, not TS.
+            // Never apply a late probe result after the user switches streams.
+            void probeAmbiguousStreamFormat(playback.streamUrl).then((format) => {
+                if (this.ownsCurrentApplication(binding, token, currentToken)) {
+                    acceptSource(format);
+                }
+            });
+        };
         if (!headerSync) {
-            acceptSource();
+            acceptWithFormat();
             return;
         }
         const handOff = (): void => {
             if (this.ownsCurrentApplication(binding, token, currentToken)) {
-                acceptSource();
+                acceptWithFormat();
             }
         };
         void headerSync.then(

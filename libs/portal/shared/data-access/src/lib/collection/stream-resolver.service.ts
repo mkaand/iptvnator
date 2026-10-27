@@ -8,7 +8,11 @@ import {
     SettingsStore,
 } from '@iptvnator/services';
 import { EpgRuntimeBridgeService } from '@iptvnator/epg/data-access';
+import { resolveChannelEpgLookupKey, resolveRawChannelEpgLookupKey } from '@iptvnator/m3u-state';
 import {
+    createXmltvIdentityIndex,
+    DEFAULT_EPG_MATCH_ORDER,
+    resolveOrderedXmltvId,
     buildStalkerEpgMappingKey,
     buildXtreamEpgMappingKey,
     Channel,
@@ -183,7 +187,7 @@ export class StreamResolverService {
         channel?: Channel
     ): Promise<EpgProgram[]> {
         const epgLookupKey = channel
-            ? this.getM3uEpgLookupKey(channel, item)
+            ? await this.getFirstExactM3uKey(channel, item)
             : await this.getM3uEpgLookupKeyForItem(item);
 
         return this.fetchM3uPrograms(epgLookupKey);
@@ -239,9 +243,48 @@ export class StreamResolverService {
 
         const tasks: Promise<void>[] = [];
 
-        for (const item of items) {
-            if (item.sourceType === 'm3u' && item.contentType === 'live') {
-                tasks.push(this.loadM3uEpg(item, epgMap, now));
+        // The source playlist's First Exact Match is not necessarily built
+        // when global Favorites/Recently Viewed opens on a cold start. Build
+        // an independent, read-only XMLTV identity index once for this batch.
+        // Never rewrite the original tvg-id or saved manual mappings.
+        const m3uItems = items.filter(item =>
+            item.sourceType === 'm3u' && item.contentType === 'live' &&
+            item.radio !== 'true' && !isCatalogUnavailable(item)
+        );
+        if (m3uItems.length) {
+            const channels = m3uItems.map(item => item.m3uChannel ?? this.buildFallbackM3uChannel(item));
+            const rawKeys = [...new Set(channels.map(resolveRawChannelEpgLookupKey).filter(Boolean))];
+            const [guide, manualMappings] = await Promise.all([
+                (this.epgBridge.getEpgChannels?.() ?? Promise.resolve(null)).catch(() => null),
+                (this.epgBridge.getEpgMappingsBatch?.(rawKeys) ?? Promise.resolve(null)).catch(() => null),
+            ]);
+            const index = createXmltvIdentityIndex(guide?.channels ?? []);
+            const order = this.settingsStore.resolvedEpgMatchOrder?.() ?? DEFAULT_EPG_MATCH_ORDER;
+            const requests = new Map<string, Promise<EpgProgram[]>>();
+            for (let i = 0; i < m3uItems.length; i++) {
+                const item = m3uItems[i];
+                const channel = channels[i];
+                const raw = resolveRawChannelEpgLookupKey(channel);
+                const matchingId = resolveOrderedXmltvId({
+                    channelName: channel.name,
+                    tvgName: channel.tvg?.name,
+                    tvgId: channel.tvg?.id,
+                }, index.ids, index.names, order);
+                const key = (raw && manualMappings?.[raw]) || matchingId ||
+                    resolveChannelEpgLookupKey(channel) || item.tvgId?.trim() || item.name?.trim();
+                if (!key) continue;
+                let promise = requests.get(key);
+                if (!promise) {
+                    promise = this.fetchM3uPrograms(key);
+                    requests.set(key, promise);
+                }
+                tasks.push(promise.then(programs => {
+                    const current = this.findCurrentProgram(programs, now);
+                    // Per-row identity prevents duplicate tvg-id entries in a
+                    // single provider playlist from overwriting one another.
+                    epgMap.set(item.uid, current);
+                    epgMap.set(key, current);
+                }));
             }
         }
 
@@ -894,7 +937,7 @@ export class StreamResolverService {
         const epgPrograms =
             includePrograms && this.supportsProgramLookup
                 ? await this.fetchM3uPrograms(
-                      this.getM3uEpgLookupKey(channel, item)
+                      await this.getFirstExactM3uKey(channel, item)
                   )
                 : [];
 
@@ -916,7 +959,32 @@ export class StreamResolverService {
             this.findM3uChannel(playlist?.playlist?.items ?? [], item) ??
             this.buildFallbackM3uChannel(item);
 
-        return this.getM3uEpgLookupKey(channel, item);
+        return this.getFirstExactM3uKey(channel, item);
+    }
+
+    /** Selected-channel timeline uses the same name-first verdict as the
+     * global row: it must not fall back to raw tvg-id after the row displays
+     * a valid programme (BBC EARTH HD/UHD cold-start regression). */
+    private async getFirstExactM3uKey(
+        channel: Channel,
+        item: UnifiedCollectionItem
+    ): Promise<string> {
+        const raw = resolveRawChannelEpgLookupKey(channel);
+        const [manual, guide] = await Promise.all([
+            raw ? (this.epgBridge.getEpgMappingsBatch?.([raw]) ?? Promise.resolve(null)).catch(() => null)
+                : Promise.resolve(null),
+            (this.epgBridge.getEpgChannels?.() ?? Promise.resolve(null)).catch(() => null),
+        ]);
+        const explicit = raw ? manual?.[raw] : undefined;
+        if (explicit) return explicit;
+        const index = createXmltvIdentityIndex(guide?.channels ?? []);
+        const match = resolveOrderedXmltvId({
+            channelName: channel.name,
+            tvgName: channel.tvg?.name,
+            tvgId: channel.tvg?.id,
+        }, index.ids, index.names,
+        this.settingsStore.resolvedEpgMatchOrder?.() ?? DEFAULT_EPG_MATCH_ORDER);
+        return match || this.getM3uEpgLookupKey(channel, item);
     }
 
     private async fetchM3uPrograms(
@@ -1355,7 +1423,7 @@ export class StreamResolverService {
         item: UnifiedCollectionItem
     ): string {
         return (
-            channel?.tvg?.id?.trim() ||
+            (channel ? resolveChannelEpgLookupKey(channel) : '') ||
             item.tvgId?.trim() ||
             channel?.tvg?.name?.trim() ||
             channel?.name?.trim() ||

@@ -1,3 +1,4 @@
+import { rememberLastPlayedLive } from '@iptvnator/shared/interfaces';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {
     Component,
@@ -34,6 +35,7 @@ import {
     isDashStreamUrl,
     isLikelyM3uMovie,
     buildM3uContentIndex,
+    m3uContentOverrideKey,
     type M3uContentKind,
     isLikelyM3uVod,
     isM3uCatchupPlaybackSupported,
@@ -152,6 +154,7 @@ import { M3uVodDetailComponent } from '../m3u-vod-detail/m3u-vod-detail.componen
 import { M3uFullscreenChannelListComponent } from './fullscreen-channel-list/m3u-fullscreen-channel-list.component';
 import { createM3uChannelPlaybackRequest } from './m3u-channel-playback-actions';
 import { M3uContentNavigationComponent } from '../m3u-content-navigation.component';
+import { M3uMediaCatalogComponent } from '../m3u-media-catalog/m3u-media-catalog.component';
 
 const M3U_EPG_GUIDE_HEADER_ACTION_ID = 'm3u-epg-guide';
 const M3U_SIDEBAR_STORAGE_KEY = 'm3u-sidebar-width';
@@ -214,6 +217,7 @@ function isInsideScrollableRegion(
         M3uFullscreenChannelListComponent,
         M3uVodDetailComponent,
         M3uContentNavigationComponent,
+        M3uMediaCatalogComponent,
         MatButtonModule,
         MatIconModule,
         MatTooltipModule,
@@ -349,12 +353,11 @@ export class VideoPlayerComponent
     readonly selectedSidebarGroup = signal<string | null>(null);
     readonly canOpenGuide = computed(() => {
         const channel = this.activeChannel();
-        return (
-            this.supportsEpg &&
-            !!channel &&
-            channel.radio !== 'true' &&
-            !this.showMovieDetail()
-        );
+        // The guide is a channel discovery view too: the header grid
+        // should work before a live channel has been selected.
+        return this.supportsEpg &&
+            this.guideChannels().length > 0 &&
+            (!channel || (channel.radio !== 'true' && !this.showMovieDetail()));
     });
     /**
      * Programme shown in the docked strip (catch-up selection wins). The
@@ -717,15 +720,35 @@ export class VideoPlayerComponent
     );
 
     /** Computed once per channel-array identity; the original objects are retained. */
-    readonly contentIndex = computed(() => buildM3uContentIndex(this.channels()));
+    readonly contentOverrides = computed(() =>
+        this.activePlaylistMeta()?.m3uContentOverrides ?? {}
+    );
+    readonly contentIndex = computed(() => buildM3uContentIndex(
+        this.channels(), this.contentOverrides()
+    ));
     readonly categoryView = computed<M3uContentKind | null>(() => {
         const base = this.activeView().replace(/-(?:groups|favorites)$/, '');
         return base === 'live' || base === 'movies' ||
             base === 'series' || base === 'unclassified' ? base : null;
     });
+    private readonly favoriteEpgKeys = this.store.selectSignal(selectFavorites);
+    /**
+     * The unrestricted M3U can have 80k+ movies and episodes. The root
+     * Favorites view must not send those entries to XMLTV bulk matching.
+     * Include actual live channels plus any bookmarked outliers; keep the
+     * original Channel objects and EPG per-entry identity.
+     */
     readonly sidebarChannels = computed(() => {
         const kind = this.categoryView();
-        return kind ? this.contentIndex()[kind] : this.channels();
+        if (kind) return this.contentIndex()[kind];
+        if (this.activeView() !== 'favorites') return this.channels();
+        const live = this.contentIndex().live;
+        const all = this.channels();
+        const favorites = new Set(this.favoriteEpgKeys());
+        if (favorites.size === 0) return live;
+        const seen = new Set(live.map(channel => channel.url));
+        const extras = all.filter(channel => favorites.has(channel.url) && !seen.has(channel.url));
+        return extras.length ? [...live, ...extras] : live;
     });
     readonly sidebarPresentationView = computed(() => {
         const view = this.activeView();
@@ -738,6 +761,43 @@ export class VideoPlayerComponent
         const kind = this.categoryView();
         return kind === null || kind === 'live';
     });
+
+    /** Bounded poster/episode catalog appears only for Movies and Series. */
+    readonly catalogKind = computed<'movies' | 'series'>(() =>
+        this.categoryView() === 'series' ? 'series' : 'movies'
+    );
+    readonly inMediaSection = computed(() =>
+        this.categoryView() === 'movies' || this.categoryView() === 'series'
+    );
+    readonly showMediaCatalog = computed(() => {
+        if (!this.inMediaSection()) return false;
+        const active = this.activeChannel();
+        if (!active) return true;
+        return !this.sidebarChannels().some(channel =>
+            channel.id === active.id && channel.url === active.url &&
+            channel.name === active.name
+        );
+    });
+
+    onCatalogContentTypeChanged(change: { channel: Channel; kind: M3uContentKind | null }): void {
+        const playlist = this.activePlaylistMeta();
+        if (!playlist || playlist.serverUrl || playlist.macAddress) return;
+        const key = m3uContentOverrideKey(change.channel);
+        const overrides = { ...(playlist.m3uContentOverrides ?? {}) };
+        if (change.kind === null) delete overrides[key];
+        else overrides[key] = change.kind;
+        this.store.dispatch(PlaylistActions.updatePlaylistMeta({
+            playlist: { _id: playlist._id, m3uContentOverrides: overrides } as PlaylistMeta,
+        }));
+    }
+
+    openCatalogEntry(channel: Channel): void {
+        this.store.dispatch(ChannelActions.setActiveChannel({ channel }));
+    }
+
+    browseMediaCatalog(): void {
+        this.store.dispatch(ChannelActions.resetActiveChannel());
+    }
 
     /** Selected video player options */
     readonly playerSettings = signal<Partial<Settings>>({
@@ -945,8 +1005,12 @@ export class VideoPlayerComponent
                     ? state.openM3uChannelUrl.trim()
                     : '';
             const targetUrl = globalSearchTargetUrl || recentTargetUrl;
+            // Global Recent movie/episode cards also use this one-shot URL
+            // handoff, but open in Movies/Series rather than the All section.
             const canOpenGlobalSearchTarget =
-                !!globalSearchTargetUrl && currentView === 'all';
+                !!globalSearchTargetUrl &&
+                (currentView === 'all' || currentView === 'movies' ||
+                    currentView === 'series');
             const canOpenRecentTarget =
                 !!recentTargetUrl && currentView === 'recent';
 
@@ -1312,6 +1376,24 @@ export class VideoPlayerComponent
         playlistId: string,
         channel: Channel
     ): Promise<void> {
+        // Recent is a mixed-content collection. Its history must retain the
+        // user-visible catalog classification rather than labelling every
+        // watched M3U movie and episode as live television.
+        const index = this.contentIndex();
+        const matches = (candidate: Channel) =>
+            candidate.url === channel.url && candidate.name === channel.name;
+        const kind: M3uContentKind = index.movies.some(matches) ? 'movies'
+            : index.series.some(matches) ? 'series'
+            : index.live.some(matches) ? 'live' : 'unclassified';
+        const contentType = kind === 'movies' ? 'movie'
+            : kind === 'series' ? 'series' : 'live';
+
+        // The history gate confirmed playback. Persist last-live preference
+        // BEFORE asynchronous playlist I/O so rapid switches cannot revert it.
+        if (kind === 'live' && channel.radio !== 'true') {
+            rememberLastPlayedLive({ sourceType: 'm3u', playlistId, itemId: channel.url });
+        }
+
         const recentlyViewedItem: M3uRecentlyViewedItem = {
             source: 'm3u',
             id: channel.url,
@@ -1322,7 +1404,7 @@ export class VideoPlayerComponent
             tvg_id: channel.tvg?.id || undefined,
             tvg_name: channel.tvg?.name || undefined,
             group_title: channel.group?.title || undefined,
-            category_id: 'live',
+            category_id: contentType,
             added_at: new Date().toISOString(),
         };
 

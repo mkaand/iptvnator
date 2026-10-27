@@ -1,74 +1,50 @@
-# IPTVnator — mkaand Community Fork
+# IPTVnator | mkaand Community Fork
 
 > [!IMPORTANT]
-> **Independent, unofficial fork** of [4gray/iptvnator](https://github.com/4gray/iptvnator), maintained at [mkaand/iptvnator](https://github.com/mkaand/iptvnator). This project is **not affiliated with or endorsed by the upstream maintainers**. It does not supply IPTV subscriptions, streams, channels, or copyrighted content. All original upstream credit and licensing remain in place.
+> This is an **independent, unofficial fork** of [4gray/iptvnator](https://github.com/4gray/iptvnator), with original copyright, credits, and license retained. The fork is not affiliated with or endorsed by the upstream maintainers. Neither project provides IPTV services, subscriptions, playlists, channels, or copyrighted streams.
 
-**Current fork version: [v0.25.0-epgpriority.6](https://github.com/mkaand/iptvnator/releases/tag/v0.25.0-epgpriority.6)** (Windows x64, unsigned community preview). The M3U EPG identity-collision fix was confirmed working for BEINSPORTS 1 HD with the user's external XMLTV guide. Code is maintained on the default `master` branch; no additional development branch is required to install or use it.
+## Catalog.6 | Windows x64 accepted build
 
-This fork focuses on two practical desktop IPTV workflows: automatically organizing large mixed M3U playlists and matching an externally managed XMLTV guide to M3U/Xtream channels **without editing either source**. Upstream IPTVnator remains the foundation, and its standard playback, search, favorites, and provider integrations are retained.
+**Fork version:** `0.25.0-catalog.6`. Windows x64 acceptance tests completed on October 27, 2026. [Download the verified Windows installer ZIP from GitHub Actions](https://github.com/mkaand/iptvnator/actions/runs/40539331991/artifacts/12750643426) and extract `iptvnator-0.25.0-catalog.6-windows-x64-setup.exe`. The artifact is temporary and requires a GitHub login. See [Releases](https://github.com/mkaand/iptvnator/releases) for any subsequently published packages. This is an **unsigned community build** and may prompt Windows SmartScreen.
 
-## What this fork changes
+The fork preserves IPTVnator's original functionality and adds focused improvements for real-world M3U, XMLTV/EPG, playback, and browsing workflows. It works with the user's own legal playlists and programme guide, without rewriting source M3U or XMLTV content.
 
-| Area | Upstream IPTVnator | This fork |
+## Improvements compared with the original project
+
+| Area | Added or extended in this fork | Practical advantage |
 | --- | --- | --- |
-| M3U browsing | Traditional all-channels and group browsing | **Live TV / Movies / Series / Unclassified**, with counts per section and the original **Browse All Content** view |
-| M3U content detection | Existing VOD/episode playback heuristics | A conservative, single-pass classification index combining groups, names, episode markers, paths, and VOD hints |
-| M3U navigation | General channel browsing | Category-specific **All / Groups / Favorites**, while preserving source-level channel identity and preferences |
-| XMLTV matching | Standard channel metadata and manual mapping | **Configurable Primary / Secondary / Third Match**: Channel Name, `tvg-name`, and `tvg-id` |
-| Missing or mismatched guide IDs | May require manual mapping | Retry the next matching field after a *failed lookup*, even when an unrelated `tvg-id` exists |
-| Duplicate XMLTV display names | Mapping can require manual selection | **First Exact Match:** the first matching imported XMLTV record wins, even when later records share the same channel name |
-| Shared M3U `tvg-id` | HD/SD/UHD variants may carry the same provider ID | **Per-entry exact matching** keeps automatic XMLTV IDs independent, with Channel Name first by default |
-| Xtream guide source | Provider EPG and externally supplied XMLTV | **Configured XMLTV First / Xtream Provider EPG First** selection plus XMLTV fallback by channel name |
-| Xtream list EPG | Existing preview refresh paths | Refresh visible-channel programme previews on async category load and category switching without clicking a channel |
-| M3U active timeline | Lookup at channel selection time | Re-query an active channel if its asynchronous XMLTV name/ID association changes; ignore stale older query responses |
-| Windows preview builds | Official upstream release process | Fork-specific version labels, automated regression tests, and an unsigned Windows x64 preview installer attached to the fork's release |
+| Mixed M3U playlists | Dedicated **Live TV, Movies, Series, Unclassified** sections, plus original all-content browsing | Keep a single large M3U instead of manually splitting live and VOD content |
+| M3U movies | Poster-style, searchable, paginated catalog with group filtering | Browse movies visually rather than scanning an enormous channel list |
+| M3U series | Grouping into series, seasons, and playable episodes | Find and play a specific episode more easily |
+| Classification | Conservative group, name, filename and URL-based detection with manual content-type overrides | Correct provider-specific misclassification without rewriting the playlist |
+| Source navigation | Per-section **All, Groups and Favorites** | Navigate different content categories without losing source context |
+| XMLTV matching | Configurable matching order for channel name, `tvg-name` and `tvg-id` | Use reliable exact names when upstream/provider IDs are incorrect |
+| Duplicate EPG entries | First Exact Match and per-channel XMLTV identity for shared `tvg-id` values | Keep HD/UHD channel guide entries independent, including global Favorites and Recently Viewed |
+| Manual EPG assignments | Saved mapping priority is preserved | User-configured exceptions are not overwritten |
+| EPG updates | Automatic background refresh at **6, 12, 18 or 24 hours**, optional refresh at startup, persisted settings | Keep imported guide data updated with predictable user control |
+| Global EPG | Cold-start Favorites EPG, global Recently Viewed EPG, and selected-channel timeline reconciliation | Programme details remain available even when the source playlist is not yet open |
+| Xtream EPG | External XMLTV versus provider EPG preference and name fallback | Better compatibility with third-party guide sources |
+| Playback resilience | Up to five automatic retries for transient HLS/PHP stream failures, including temporary HTTP 403 responses | Reduce manual reconnecting while retaining bounded retries |
+| Playback continuity | Last live channel restoration and accurate Recently Viewed ordering | Return to familiar live content and recent selections |
+| VOD history | M3U Movies/Series entries appear under their own Recently Viewed tabs and reopen the recorded media | Keep films and episodes in the same unified viewing history as live channels |
+| Collection management | Per-type and per-playlist/global history clearing with confirmation | Remove viewing history without deleting playlists or favorites |
+| Distribution and quality | Dedicated Windows x64 installer workflow, Docker checks, typechecks, and regression tests | Reproducible fork builds and explicit acceptance testing |
 
-### 📺 M3U content organization
+### Windows validation
 
-Large playlists containing live channels, movies, and series can remain **one regularly updated M3U source**. IPTVnator classifies entries in memory; it does **not** rewrite M3U files, replace playlist URLs, create a new server, or replicate every stream into separate playlists.
+The Catalog.6 Windows x64 installer and Docker CI both completed successfully for commit [`17b094f`](https://github.com/mkaand/iptvnator/commit/17b094f6a6cf6389effbc4ec35d87f9b6ddc30b1). User acceptance confirmed EPG initialization and persistence, Favorites and Recently Viewed EPG, five playback retries, Live TV viewing history, Movies/Series history and reopening, last-channel playback, and dark-mode favorites sorting.
 
-- **Live TV:** established live-channel interface, groups, favorites, and EPG.
-- **Movies:** movie entries using the familiar channel-list layout in this MVP.
-- **Series:** series and episode candidates using the same list layout. Advanced season/episode browsing is future work.
-- **Unclassified:** entries without sufficient evidence. The section displays a count; nothing disappears from the original playlist.
-- **Browse All Content:** unchanged access to the entire original playlist.
+- [Windows build, tests, and temporary setup download](https://github.com/mkaand/iptvnator/actions/runs/40539331991)
+- [Docker build](https://github.com/mkaand/iptvnator/actions/runs/40539341067)
+- [Development PR #4](https://github.com/mkaand/iptvnator/pull/4)
+- **Known limitation:** Turkish-language movie/series TMDB title matching was deliberately excluded from this acceptance scope.
+- **Data safety:** Existing playlist URLs, credentials, favorites, mappings, and settings are retained. Do not post private IPTV credentials or playlist links in issue reports.
 
-Classification is intentionally conservative. Names, URL extensions, and group labels can be inaccurate; **Unclassified is safer than guessing**. The feature is tested with synthetic 100,000-entry playlists, but individual provider playlist accuracy must be validated with real data. Poster catalogs and manual classification-rule editing are *not* included in this MVP.
+### Development and attribution
 
-### 📅 External XMLTV and EPG matching
+This community fork was developed and iteratively refined **with OpenAI Codex assistance**, guided by user requirements, code review, GitHub Actions checks, and hands-on Windows acceptance testing. AI-assisted changes are reviewed against the actual repository and acceptance results; the original upstream project's authorship and license remain acknowledged.
 
-In **Settings → EPG → EPG Matching Preferences**, choose three distinct fields in priority order (the interface swaps positions automatically):
-
-1. **Primary Match**: `Channel Name` by default.
-2. **Secondary Match**: `tvg-name` by default.
-3. **Third Match**: `tvg-id` by default.
-
-The next field is tried only when no usable XMLTV channel match was found. Saved **manual channel mappings retain priority**. For Xtream playlists, select **Configured XMLTV First** to prefer a configured external guide, or **Xtream Provider EPG First** to prioritize the provider's built-in EPG.
-
-**First Exact Match for duplicate channel names.** WebGrab EPG Manager may publish a canonical stream under several linked XMLTV IDs to cover different player names. The guide can therefore contain several `<channel>` records with the *same exact display name*, for example three `BEINSPORTS 1 HD` records with distinct IDs. This fork **selects the first exact name match returned by the imported guide channel index**, rather than rejecting the match or checking which candidate is on air. It does not automatically strip or conflate `HD`, `SD`, or `UHD`: those remain separate exact names. A manual mapping overrides automatic choices.
-
-**M3U channels sharing a provider ID.** Some playlists intentionally give `A2 HD` and `A2 UHD` the same `tvg-id="A2.tr"` and `tvg-name="A2 HD"`; some give three `BEINSPORTS 1 HD` streams and an SD variant the same `LIGTV.tr`. The visible M3U **Channel Name** takes precedence by default and resolves each entry's XMLTV ID independently in session memory. A duplicated `tvg-id` no longer cancels all of these matches. HD/SD/UHD entries are not automatically conflated, even when they broadcast identical content. An explicitly customized match order is still respected.
-
-**Manual mapping compatibility:** Existing saved mappings stay keyed by the original M3U lookup key and override automatic matching. A manual mapping for a shared `tvg-id` still applies to all its variants (the legacy behavior). The mapping dialog uses this raw key, not a transient resolved XMLTV ID; no provider sources or settings are rewritten.
-
-**What “first” means:** The local Electron database lists EPG channels ordered by display name and, for identical names, stable SQLite insertion order (`rowid`). On a fresh import, that generally follows the XMLTV channel order; after reimports or updates, older database row identities can persist, so **reordering an existing XML file is not guaranteed to change the first imported match**. Where exact source-file order is critical, clean up duplicate names in the EPG generator and re-import accordingly.
-
-**Trade-off:** First Exact is a deliberate user preference, not proof that multiple entries carry identical schedules. If the first entry has stale or missing programmes, the app does **not** silently pick a different duplicate based on current airtime. Use the existing manual EPG mapping UI for exceptions. The guide and playlist remain untouched, and ordered matching still respects **Channel Name → `tvg-name` → `tvg-id`** (or the saved custom priority).
-
-
-### 🔧 Scope, compatibility, and downloads
-
-- **Windows x64 installer:** Download the unsigned NSIS setup executable from this fork's [v0.25.0-epgpriority.6 release](https://github.com/mkaand/iptvnator/releases/tag/v0.25.0-epgpriority.6). The [verified GitHub Actions run](https://github.com/mkaand/iptvnator/actions/runs/40133636976) also retains a temporary build artifact. Because this is an unsigned community build, Windows SmartScreen may prompt before installation.
-- **Versioning:** fork builds carry descriptive suffixes (for example, `0.25.0-epgpriority.6`) to distinguish them from upstream releases.
-- **Updates:** an official upstream update can replace fork-only features. Do not install an upstream update over this preview build without checking whether the relevant changes have been integrated.
-- **Privacy:** your EPG/playlist URL, database, credentials, and WebGrab EPG Manager do not need to be modified to use these features. Avoid posting private playlist URLs or Xtream credentials in bug reports.
-- **Platform coverage:** EPG matching through the native XMLTV database is desktop-oriented; browser/PWA builds may lack the required Electron bridge operations.
-- **Windows acceptance:** BEINSPORTS 1 HD EPG and its populated timeline were confirmed on a real Windows installation using an external XMLTV guide. Automated CI covers the A2 HD/UHD and BEINSPORTS shared-ID scenarios. Additional live-provider regressions and saved manual mapping cases should still be checked before considering the fork broadly stable.
-- **Quality status:** automated tests cover the matching rules, duplicates, large-library classification, M3U/Xtream regressions, settings, and Windows packaging. Real-provider reception and guide content still require manual acceptance testing.
-
-**Development:** All fork improvements are consolidated in the [default master branch](https://github.com/mkaand/iptvnator/tree/master). The [integration pull request](https://github.com/mkaand/iptvnator/pull/1) and commit history retain attribution and implementation details. An archived tag preserves the earlier experimental collision-fix branch.
-
-**Upstream references:** [official IPTVnator](https://github.com/4gray/iptvnator) · [original EPG matching report, issue #1992](https://github.com/4gray/iptvnator/issues/1992). If you discover a bug in fork-only code, please use [issues in this fork](https://github.com/mkaand/iptvnator/issues) rather than attributing it to upstream.
+Upstream: [4gray/iptvnator](https://github.com/4gray/iptvnator) · Fork: [mkaand/iptvnator](https://github.com/mkaand/iptvnator) · [Fork issues](https://github.com/mkaand/iptvnator/issues)
 
 ---
 
@@ -507,3 +483,38 @@ in [AGENTS.md](AGENTS.md); Claude Code reads that same file directly (see
 [Claude Code setup](docs/development/agent-workflow.md#claude-code)). Development and
 documentation-maintenance conventions live in the
 [agent workflow](docs/development/agent-workflow.md).
+
+## Catalog.2 experimental preview
+
+Work in the [experimental development branch](https://github.com/mkaand/iptvnator/tree/feat/m3u-classification-playback-resilience), not the stable master release.
+
+- **Change Content Type** in the M3U channel context menu: Live TV / Movies / Series / Unclassified and **Reset to Automatic**. Movie poster cards also have a category selector.
+- Overrides are per-playlist metadata, surviving automatic M3U refreshes. Items use original stream URL plus name rather than generated channel IDs. The source M3U remains unchanged.
+- A limited HTTP HEAD check for ambiguous/PHP Video.js streams can detect HLS or MPEG-TS MIME types. Explicit TS/HLS files are unchanged. Unknown/failed checks keep original behavior.
+- No authorization credentials, response bodies, URLs, or private test fixtures are logged by this check. CORS, provider authentication, unsupported codecs, and invalid MSE streams are not bypassed.
+- Preview must pass CI and real Windows acceptance before merging or publishing a stable release.
+
+## Catalog.3 integrated Windows package
+
+Catalog.3 consolidates the M3U improvements on the feature branch pending
+Windows acceptance: persistent playlist-local manual content classifications,
+Ctrl-click selection and batch classification, clickable global search, corrected
+Movies/Unclassified rail tooltips, a usable EPG grid icon before selecting a
+channel, and Series TMDB posters/details (opt-in and page-bounded).
+
+**Favorites EPG:** The root Favorites view now resolves XMLTV only for live
+channels plus explicitly bookmarked non-live entries, rather than submitting
+the entire mixed M3U movie/episode inventory to current-programme matching.
+EPG channel keys and stored manual matching priorities are unchanged.
+
+**HTTP playback/PiP:** Script and extensionless URLs can use Video.js's
+MIME-aware HLS/TS handling. When HTML5 is selected for one of these ambiguous
+sources, the compatible Video.js engine is used for that source, retaining the
+HTML video Picture-in-Picture path. Embedded MPV still does not offer native
+PiP. This is not a guarantee that providers returning HTTP 403, inaccessible
+CORS responses or incompatible codecs will work in a browser engine.
+
+All generated test URLs are synthetic. No private provider endpoints or secrets
+are checked into this repository. The setup EXE is an unsigned Windows x64
+artifact and remains subject to real-playlist acceptance before it replaces
+the existing stable fork.

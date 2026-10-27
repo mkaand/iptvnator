@@ -135,6 +135,7 @@ export class WorkspaceShellHeaderComponent {
     readonly searchChanged = output<string>();
     readonly searchSubmitted = output<string>();
     readonly commandPaletteRequested = output<void>();
+    readonly globalSearchRequested = output<void>();
     readonly shortcutsRequested = output<void>();
     readonly addPlaylistRequested = output<void>();
     readonly headerShortcutRequested = output<void>();
@@ -159,6 +160,13 @@ export class WorkspaceShellHeaderComponent {
     containsSearchInput(target: EventTarget | null): boolean {
         const inputElement = this.searchInput()?.nativeElement;
         return !!inputElement && target === inputElement;
+    }
+
+    onSearchClick(): void {
+        // Clicking the visible Search field means searching *content*.
+        // Non-searchable routes (including M3U catalogs) use global search;
+        // Ctrl+K and the adjacent shortcut still open the command palette.
+        if (!this.canUseSearch()) this.globalSearchRequested.emit();
     }
 
     onSearchInput(event: Event): void {

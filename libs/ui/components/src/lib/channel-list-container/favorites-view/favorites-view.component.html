@@ -1,9 +1,20 @@
+<div class="favorites-sort-options">
+    <label for="m3u-favorites-sort">Sort</label>
+    <select id="m3u-favorites-sort" aria-label="Sort favorites"
+            [value]="sortMode()" (change)="setSortMode($any($event.target).value)"
+            class="favorites-sort-select">
+        <option value="custom">Manual order</option>
+        <option value="name-asc">A–Z</option>
+        <option value="name-desc">Z–A</option>
+    </select>
+</div>
+
 <div
     appChannelScrollFocus
     [attr.aria-label]="'HOME.PLAYLISTS.CHANNELS' | translate"
     class="channel-list app-scrollbar"
     cdkDropList
-    [cdkDropListDisabled]="hasSearchTerm()"
+    [cdkDropListDisabled]="hasSearchTerm() || !isManualSort()"
     (cdkDropListDropped)="onDrop($event)"
     id="favorites-list"
 >
@@ -20,7 +31,7 @@
                     '. ' +
                     (channel?.name || 'CHANNELS.UNNAMED_CHANNEL' | translate)
                 "
-                [isDraggable]="!hasSearchTerm()"
+                [isDraggable]="!hasSearchTerm() && isManualSort()"
                 [logo]="getLogoForChannel(channel)"
                 [showEpg]="shouldShowEpg()"
                 [isRadio]="channel?.radio === 'true'"

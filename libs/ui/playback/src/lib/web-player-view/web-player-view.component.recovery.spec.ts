@@ -156,6 +156,43 @@ describe('WebPlayerViewComponent recovery integration', () => {
 
     afterEach(() => fixture.destroy());
 
+    it('automatically retries a transient PHP live stream and shows progress', async () => {
+        fixture.componentRef.setInput('streamUrl', 'https://example.invalid/earthcam.php');
+        setPlayback({ streamUrl: 'https://example.invalid/earthcam.php', isLive: true });
+        await render();
+
+        vjs().playbackIssue.emit(networkIssue('videojs'));
+        fixture.detectChanges();
+
+        expect(component.autoRetryAttempt()).toBe(1);
+        expect(fixture.nativeElement.querySelector('.web-player-auto-retry')?.textContent)
+            .toContain('1/5');
+        expect(component.visiblePlaybackDiagnostic()).toBeNull();
+
+        // A changed channel must cancel its pending retry before the timer fires.
+        fixture.componentRef.setInput('streamUrl', 'https://example.invalid/other.m3u8');
+        setPlayback({ streamUrl: 'https://example.invalid/other.m3u8', isLive: true });
+        await render();
+        expect(component.autoRetryAttempt()).toBe(0);
+    });
+
+    it('retries a temporary HTTP 403 on a live .m3u8 source', async () => {
+        fixture.componentRef.setInput('streamUrl', 'https://example.invalid/live.m3u8');
+        setPlayback({ streamUrl: 'https://example.invalid/live.m3u8', isLive: true });
+        await render();
+
+        vjs().playbackIssue.emit({
+            ...browserAccessIssue('videojs'),
+            httpStatus: 403,
+        });
+        fixture.detectChanges();
+
+        expect(component.autoRetryAttempt()).toBe(1);
+        expect(component.visiblePlaybackDiagnostic()).toBeNull();
+        expect(fixture.nativeElement.querySelector('.web-player-auto-retry')?.textContent)
+            .toContain('1/5');
+    });
+
     it('ranks HTML5, MPV, then VLC for a fatal Video.js HLS media failure', async () => {
         await render();
 

@@ -2,6 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { PlaylistActions, selectAllPlaylistsMeta } from '@iptvnator/m3u-state';
 import { firstValueFrom, map } from 'rxjs';
+import { rememberLastPlayedLive } from '@iptvnator/shared/interfaces';
+import { classifyM3uContent, m3uContentOverrideKey } from '@iptvnator/shared/m3u-utils';
 import {
     DatabaseService,
     PlaylistsService,
@@ -244,6 +246,19 @@ export class UnifiedRecentDataService {
         item: UnifiedCollectionItem
     ): Promise<UnifiedCollectionItem> {
         const viewedAt = new Date().toISOString();
+
+        // This method is entered for a confirmed played channel. Update the
+        // startup preference before asynchronous provider/history writes, or
+        // an earlier response can replace a more recently played channel.
+        if (item.contentType === 'live' && item.radio !== 'true') {
+            const id = item.sourceType === 'm3u' ? item.streamUrl
+                : item.sourceType === 'xtream' ? item.xtreamId
+                : item.stalkerId;
+            if (id != null && String(id).trim()) {
+                rememberLastPlayedLive({ sourceType: item.sourceType,
+                    playlistId: item.playlistId, itemId: String(id) });
+            }
+        }
 
         if (item.sourceType === 'm3u') {
             if (!item.streamUrl) {
@@ -610,6 +625,22 @@ export class UnifiedRecentDataService {
                 }
 
                 seenUrls.add(channel.url);
+                // Legacy rows were all written as 'live', even for watched
+                // M3U movies and series. Resolve against the *current* catalog
+                // and the user's manual override, never mutate old history.
+                const preferred = meta.m3uContentOverrides?.[m3uContentOverrideKey(channel)];
+                const kind = preferred ?? classifyM3uContent(channel);
+                // New history rows explicitly remember their Movies/Series
+                // classification. Keep that even if a later playlist refresh
+                // changes its heuristic group title. Legacy 'live'-only rows
+                // continue to be classified from current channels/overrides.
+                const contentType = preferred === 'movies' ? 'movie'
+                    : preferred === 'series' ? 'series'
+                    : preferred === 'live' ? 'live'
+                    : recentItem.category_id === 'movie' ? 'movie'
+                    : recentItem.category_id === 'series' ? 'series'
+                    : kind === 'movies' ? 'movie'
+                    : kind === 'series' ? 'series' : 'live';
 
                 return {
                     uid: buildCollectionUid(
@@ -622,7 +653,7 @@ export class UnifiedRecentDataService {
                         channel.name ||
                         recentItem.tvg_name?.trim() ||
                         recentItem.url,
-                    contentType: 'live' as const,
+                    contentType,
                     sourceType: 'm3u' as const,
                     playlistId: meta._id,
                     playlistName: meta.title || meta.filename || 'M3U',

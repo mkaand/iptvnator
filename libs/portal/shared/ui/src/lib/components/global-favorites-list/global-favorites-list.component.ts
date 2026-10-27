@@ -32,7 +32,7 @@ import {
     epgProviderClockMs,
     playlistDisplayLabel,
 } from '@iptvnator/shared/interfaces';
-import { resolveChannelEpgLookupKey } from '@iptvnator/m3u-state';
+import { exactEpgNameAliasesRevision, resolveChannelEpgLookupKey } from '@iptvnator/m3u-state';
 import { EpgMappingDialogComponent } from '@iptvnator/ui/components';
 import { EpgRuntimeBridgeService } from '@iptvnator/epg/data-access';
 import {
@@ -133,6 +133,7 @@ export class GlobalFavoritesListComponent {
     readonly enrichedChannels = computed((): EnrichedUnifiedFavorite[] => {
         const epgMap = this.epgMap();
         this.progressTick();
+        exactEpgNameAliasesRevision();
 
         const sorted = deriveVisibleFavoriteChannels(this.channels(), {
             searchTerm: this.searchTermInput(),
@@ -142,10 +143,14 @@ export class GlobalFavoritesListComponent {
         });
 
         return sorted.map((ch) => {
-            const epgKey = ch.tvgId?.trim() || ch.name?.trim();
-            const currentEpgProgram = epgKey
-                ? (epgMap.get(epgKey) ?? null)
-                : null;
+            const epgKey = ch.m3uChannel
+                ? resolveChannelEpgLookupKey(ch.m3uChannel)
+                : ch.tvgId?.trim() || ch.name?.trim();
+            // Global lists have their own per-row First Exact XMLTV lookup.
+            // Source playlists may reuse the same tvg-id for HD/UHD rows, so
+            // prefer the stable UID instead of colliding on the raw tvg-id.
+            const currentEpgProgram = epgMap.get(ch.uid) ??
+                (epgKey ? (epgMap.get(epgKey) ?? null) : null);
             return {
                 ...ch,
                 currentEpgProgram,

@@ -1,0 +1,83 @@
+name: Publish accepted Catalog.6 Windows release (one-time)
+
+# This workflow runs once when first introduced to master. It is scoped
+# to changes to its own file and does not run on ordinary master pushes.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/catalog6-publish-once.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish-catalog6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check whether release already exists
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "v0.25.0-catalog.6" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Download user-accepted Windows x64 installer
+        if: steps.existing.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          gh run download 40539331991 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name "IPTVnator-M3U-Catalog-v0.25.0-catalog.6-Windows-x64" \
+            --dir release-assets
+          test -s release-assets/iptvnator-0.25.0-catalog.6-windows-x64-setup.exe
+          test "$(stat -c %s release-assets/iptvnator-0.25.0-catalog.6-windows-x64-setup.exe)" -gt 180000000
+          sha256sum release-assets/iptvnator-0.25.0-catalog.6-windows-x64-setup.exe
+
+      - name: Publish Catalog.6 prerelease with installer asset
+        if: steps.existing.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<'EOF'
+          ## IPTVnator Catalog.6 | mkaand Community Fork
+
+          User-accepted Windows x64 build. Independent, unofficial fork of 4gray/iptvnator.
+
+          ### Highlights
+          - Live TV, Movies and Series catalog browsing for mixed M3U playlists
+          - Poster-based Movies and season/episode-based Series navigation
+          - External XMLTV matching priority and First Exact Match for duplicate/shared IDs
+          - Global Favorites/Recently Viewed EPG, including cold-start behaviour
+          - Automatic EPG refresh on startup and at selected 6/12/18/24-hour intervals
+          - Five retries for transient HLS/PHP playback errors, including HTTP 403
+          - Last played live channel, working Movies/Series viewing history and reopen
+          - Confirmed per-tab / per-playlist history clearing
+
+          ### Verification
+          Windows x64 workflow 40539331991 and Docker workflow 40539341067 succeeded for accepted code commit 17b094f6a6cf6389effbc4ec35d87f9b6ddc30b1. The Windows installer is unsigned; SmartScreen may warn. TMDB Turkish-title matching is outside this release's acceptance scope.
+
+          ### Attribution
+          Developed with OpenAI Codex assistance and manual Windows acceptance testing. Original authorship and licensing belong to the upstream IPTVnator project. No IPTV subscriptions, streams or playlists are supplied.
+          EOF
+          gh release create "v0.25.0-catalog.6" \
+            "release-assets/iptvnator-0.25.0-catalog.6-windows-x64-setup.exe" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "IPTVnator Catalog.6 | Windows x64 Community Fork" \
+            --notes-file release-notes.md \
+            --prerelease
