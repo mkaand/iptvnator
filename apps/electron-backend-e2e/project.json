@@ -76,6 +76,15 @@
                 "command": "tsx --tsconfig tsconfig.json src/performance/m3u-global-search-sql.benchmark.ts"
             }
         },
+        "benchmark-m3u-global-search-phase4": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "parallelism": false,
+            "options": {
+                "cwd": "apps/electron-backend-e2e",
+                "command": "tsx --tsconfig tsconfig.json src/performance/m3u-global-search-phase4.benchmark.ts"
+            }
+        },
         "journeys": {
             "dependsOn": ["electron-backend:build-performance"],
             "executor": "nx:run-commands",

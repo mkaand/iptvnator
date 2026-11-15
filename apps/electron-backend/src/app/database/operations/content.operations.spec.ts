@@ -54,6 +54,9 @@ import {
     searchContent,
 } from './content.operations';
 
+const originalM3uBroadPrefilterKillSwitch =
+    process.env['IPTVNATOR_DISABLE_M3U_BROAD_PREFILTER'];
+
 function createDbMock(result: unknown[] = []) {
     const limit = jest.fn().mockResolvedValue(result);
     const where = jest.fn().mockReturnValue({ limit });
@@ -113,12 +116,22 @@ function createRecentlyAddedDbMock(resultsByCall: unknown[][]) {
 
 describe('content.operations', () => {
     beforeEach(() => {
+        delete process.env['IPTVNATOR_DISABLE_M3U_BROAD_PREFILTER'];
         andMock.mockClear();
         eqMock.mockClear();
         inArrayMock.mockClear();
         orMock.mockClear();
         sqlJoinMock.mockClear();
         sqlMock.mockClear();
+    });
+
+    afterAll(() => {
+        if (originalM3uBroadPrefilterKillSwitch === undefined) {
+            delete process.env['IPTVNATOR_DISABLE_M3U_BROAD_PREFILTER'];
+        } else {
+            process.env['IPTVNATOR_DISABLE_M3U_BROAD_PREFILTER'] =
+                originalM3uBroadPrefilterKillSwitch;
+        }
     });
 
     it('adds the content type filter when resolving by xtream ID', async () => {
@@ -722,7 +735,7 @@ describe('content.operations', () => {
         expect(limit).toHaveBeenCalledWith(5000);
     });
 
-    it('prefilters M3U payloads by searchable text fields instead of raw payload contains', async () => {
+    it('uses the broad M3U payload prefilter by default', async () => {
         const limit = jest.fn().mockResolvedValue([]);
         const orderedQuery = {
             limit,
@@ -749,6 +762,40 @@ describe('content.operations', () => {
             );
 
         expect(searchPatterns.length).toBeGreaterThan(0);
+        expect(searchPatterns).toContain('%news%');
+        expect(
+            searchPatterns.every(
+                (pattern) =>
+                    !pattern.includes('"name"') &&
+                    !pattern.includes('"title"')
+            )
+        ).toBe(true);
+    });
+
+    it('restores the field-aware M3U prefilter with the kill switch', async () => {
+        process.env['IPTVNATOR_DISABLE_M3U_BROAD_PREFILTER'] = '1';
+        const limit = jest.fn().mockResolvedValue([]);
+        const orderedQuery = {
+            limit,
+            then: (resolve: (value: unknown[]) => void) => resolve([]),
+        };
+        const orderBy = jest.fn().mockReturnValue(orderedQuery);
+        const where = jest.fn().mockReturnValue({ orderBy });
+        const from = jest.fn().mockReturnValue({ where });
+        const select = jest.fn().mockReturnValue({ from });
+        const db = { select } as unknown as AppDatabase;
+
+        await globalSearch(db, 'news', ['live'], false, ['m3u'], {
+            limit: 10,
+        });
+
+        const searchPatterns = sqlMock.mock.calls
+            .flatMap(([, ...values]) => values)
+            .filter(
+                (value): value is string =>
+                    typeof value === 'string' &&
+                    value.toLocaleLowerCase().includes('news')
+            );
         expect(searchPatterns).not.toContain('%news%');
         expect(
             searchPatterns.every(
@@ -756,6 +803,129 @@ describe('content.operations', () => {
                     pattern.includes('"name"') || pattern.includes('"title"')
             )
         ).toBe(true);
+        expect(select).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to the field-aware query when broad candidates fill the limit', async () => {
+        let queryIndex = 0;
+        const limit = jest.fn().mockImplementation(async () => {
+            queryIndex += 1;
+            return queryIndex === 1
+                ? Array.from({ length: 5000 }, (_, index) => ({
+                      id: `decoy-${index}`,
+                      name: `Decoy ${index}`,
+                      payload: null,
+                  }))
+                : [];
+        });
+        const orderedQuery = { limit };
+        const orderBy = jest.fn().mockReturnValue(orderedQuery);
+        const where = jest.fn().mockReturnValue({ orderBy });
+        const from = jest.fn().mockReturnValue({ where });
+        const select = jest.fn().mockReturnValue({ from });
+        const db = { select } as unknown as AppDatabase;
+
+        const results = await globalSearch(
+            db,
+            'news',
+            ['live'],
+            false,
+            ['m3u'],
+            { limit: 10 }
+        );
+
+        const searchPatterns = sqlMock.mock.calls
+            .flatMap(([, ...values]) => values)
+            .filter(
+                (value): value is string =>
+                    typeof value === 'string' &&
+                    value.toLocaleLowerCase().includes('news')
+            );
+        expect(results).toEqual([]);
+        expect(select).toHaveBeenCalledTimes(2);
+        expect(limit).toHaveBeenCalledTimes(2);
+        expect(searchPatterns).toContain('%news%');
+        expect(
+            searchPatterns.some(
+                (pattern) =>
+                    pattern.includes('"name"') || pattern.includes('"title"')
+            )
+        ).toBe(true);
+    });
+
+    it('keeps mixed M3U and Xtream results ranked together', async () => {
+        const all = jest.fn().mockResolvedValue([
+            {
+                id: 7,
+                category_id: 10,
+                title: 'News World',
+                rating: '',
+                added: '',
+                poster_url: '',
+                epg_channel_id: '',
+                tv_archive: 0,
+                tv_archive_duration: 0,
+                direct_source: '',
+                xtream_id: 7,
+                type: 'live',
+                playlist_id: 'xtream-1',
+                playlist_name: 'Xtream One',
+            },
+        ]);
+        const limit = jest.fn().mockResolvedValue([
+            {
+                id: 'm3u-1',
+                name: 'M3U One',
+                payload: JSON.stringify({
+                    playlist: {
+                        items: [
+                            {
+                                id: 'm3u-news',
+                                url: 'https://stream.test/news.m3u8',
+                                name: 'News Local',
+                                group: { title: 'News' },
+                                tvg: {
+                                    id: '',
+                                    name: '',
+                                    url: '',
+                                    logo: '',
+                                    rec: '',
+                                },
+                                http: {
+                                    referrer: '',
+                                    'user-agent': '',
+                                    origin: '',
+                                },
+                                radio: '',
+                            },
+                        ],
+                    },
+                }),
+            },
+        ]);
+        const orderBy = jest.fn().mockReturnValue({ limit });
+        const where = jest.fn().mockReturnValue({ orderBy });
+        const from = jest.fn().mockReturnValue({ where });
+        const select = jest.fn().mockReturnValue({ from });
+        const db = { all, select } as unknown as AppDatabase;
+
+        const results = await globalSearch(
+            db,
+            'news',
+            ['live'],
+            false,
+            ['xtream', 'm3u'],
+            { limit: 10 }
+        );
+
+        expect(results.map((result) => result.source_type)).toEqual([
+            'm3u',
+            'xtream',
+        ]);
+        expect(results.map((result) => result.title)).toEqual([
+            'News Local',
+            'News World',
+        ]);
     });
 
     it('finds compound-word channels anywhere in M3U channel names (issue #1161)', () => {
@@ -1044,11 +1214,15 @@ describe('content.operations', () => {
             );
 
         expect(searchPatterns).toEqual(
-            expect.arrayContaining([
-                expect.stringContaining('"name":"%a&e%"'),
-                expect.stringContaining('"title":"%a&e%"'),
-            ])
+            expect.arrayContaining(['%a&e%'])
         );
+        expect(
+            searchPatterns.every(
+                (pattern) =>
+                    !pattern.includes('"name"') &&
+                    !pattern.includes('"title"')
+            )
+        ).toBe(true);
     });
 
     it('keeps accented M3U payload text field variants in SQL prefilters', async () => {
@@ -1086,7 +1260,8 @@ describe('content.operations', () => {
         expect(
             searchPatterns.every(
                 (pattern) =>
-                    pattern.includes('"name"') || pattern.includes('"title"')
+                    !pattern.includes('"name"') &&
+                    !pattern.includes('"title"')
             )
         ).toBe(true);
     });
