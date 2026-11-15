@@ -1747,6 +1747,7 @@ export async function waitForSourceRowIdle(
 }
 
 export async function waitForM3uCatalog(page: Page): Promise<void> {
+    await page.getByRole('link', { name: 'All channels', exact: true }).click();
     await page.waitForURL(/\/workspace\/playlists\/.+\/all$/);
     await expect(page.getByTestId('channel-item').first()).toBeVisible({
         timeout: 20000,
