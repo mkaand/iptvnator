@@ -85,6 +85,28 @@
                 "command": "tsx --tsconfig tsconfig.json src/performance/m3u-global-search-phase4.benchmark.ts"
             }
         },
+        "benchmark-m3u-global-search-phase5": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "parallelism": false,
+            "options": {
+                "cwd": "apps/electron-backend-e2e",
+                "command": "tsx --tsconfig tsconfig.json src/performance/m3u-global-search-phase5.benchmark.ts"
+            }
+        },
+        "phase5-packaged-acceptance": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "parallelism": false,
+            "options": {
+                "cwd": "apps/electron-backend-e2e",
+                "commands": [
+                    "tsx --tsconfig tsconfig.json src/performance/phase5-packaged-acceptance.ts broad",
+                    "tsx --tsconfig tsconfig.json src/performance/phase5-packaged-acceptance.ts current"
+                ],
+                "parallel": false
+            }
+        },
         "journeys": {
             "dependsOn": ["electron-backend:build-performance"],
             "executor": "nx:run-commands",
