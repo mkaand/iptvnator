@@ -107,6 +107,15 @@
                 "parallel": false
             }
         },
+        "phase5b-packaged-functional-acceptance": {
+            "executor": "nx:run-commands",
+            "cache": false,
+            "parallelism": false,
+            "options": {
+                "cwd": "apps/electron-backend-e2e",
+                "command": "tsx --tsconfig tsconfig.json src/performance/phase5b-packaged-functional-acceptance.ts compare"
+            }
+        },
         "journeys": {
             "dependsOn": ["electron-backend:build-performance"],
             "executor": "nx:run-commands",
