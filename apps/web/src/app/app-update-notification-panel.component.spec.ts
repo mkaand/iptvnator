@@ -18,7 +18,7 @@ import { AppUpdateReleaseNotesDialogComponent } from './settings/app-update-rele
 const availableStatus: ElectronBridgeAppUpdateStatus = {
     currentVersion: '0.22.0',
     latestVersion: '0.23.0',
-    manualDownloadUrl: 'https://github.com/4gray/iptvnator/releases/latest',
+    manualDownloadUrl: 'https://github.com/mkaand/iptvnator/releases/latest',
     status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Available,
     supportedSelfUpdate: true,
     channel: 'stable',
@@ -31,6 +31,7 @@ describe('AppUpdateNotificationPanelComponent', () => {
     let statusHandler: ((status: ElectronBridgeAppUpdateStatus) => void) | null;
 
     beforeEach(async () => {
+        localStorage.clear();
         statusHandler = null;
         window.electron = {
             downloadAppUpdate: jest.fn().mockResolvedValue({
@@ -66,6 +67,7 @@ describe('AppUpdateNotificationPanelComponent', () => {
     });
 
     afterEach(() => {
+        localStorage.clear();
         window.electron = originalElectron;
     });
 
@@ -115,12 +117,41 @@ describe('AppUpdateNotificationPanelComponent', () => {
         ).click();
         fixture.detectChanges();
 
-        expect(fixture.componentInstance.dismissedVersion()).toBe('0.23.0');
+        expect(fixture.componentInstance.dismissedVersion()).toBe(
+            'iptvnator-app-update-dismissed-v1:mkaand/iptvnator:stable:0.23.0'
+        );
         expect(
             fixture.nativeElement.querySelector(
                 '[data-test-id="app-update-notification"]'
             )
         ).toBeNull();
+    });
+
+    it('keeps a dismissed channel/version hidden after recreation but shows a newer version', async () => {
+        await showUpdate(availableStatus);
+        (
+            fixture.nativeElement.querySelector(
+                '.app-update-notification__header button'
+            ) as HTMLButtonElement
+        ).click();
+        fixture.destroy();
+
+        fixture = TestBed.createComponent(AppUpdateNotificationPanelComponent);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        await showUpdate(availableStatus);
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="app-update-notification"]'
+            )
+        ).toBeNull();
+
+        await showUpdate({ ...availableStatus, latestVersion: '0.24.0' });
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="app-update-notification"]'
+            )
+        ).not.toBeNull();
     });
 
     it('opens release notes without dismissing the notification', async () => {

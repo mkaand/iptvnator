@@ -35,7 +35,7 @@
                         }
                     </div>
                     <code class="settings-hero__version" data-test-id="app-version">
-                        {{ version() }}
+                        {{ displayVersion() }}
                         @if (buildCommitShort(); as commit) {
                             <span
                                 class="build-commit"
@@ -121,18 +121,22 @@
                                     {{ channelLabelKey | translate }}
                                 </span>
                             }
-                            <strong>
-                                {{
-                                    appUpdateStatusLabelKey()
-                                        | translate
-                                            : {
-                                                  version:
-                                                      updateStatus.latestVersion ||
-                                                      updateStatus.currentVersion,
-                                              }
-                                }}
-                            </strong>
-                            @if (updateStatus.error) {
+                            @if (hasNoPublishedRelease()) {
+                                <strong>{{ updateStatus.error }}</strong>
+                            } @else {
+                                <strong>
+                                    {{
+                                        appUpdateStatusLabelKey()
+                                            | translate
+                                                : {
+                                                      version:
+                                                          updateStatus.latestVersion ||
+                                                          updateStatus.currentVersion,
+                                                  }
+                                    }}
+                                </strong>
+                            }
+                            @if (updateStatus.error && !hasNoPublishedRelease()) {
                                 <span>{{ updateStatus.error }}</span>
                             }
                             @if (updateStatus.progress; as progress) {
@@ -311,6 +315,29 @@
                             </div>
                         </div>
                     }
+                    <div
+                        class="setting-item"
+                        data-test-id="app-update-auto-check"
+                        [formGroup]="form()!"
+                    >
+                        <div class="setting-item__meta">
+                            <h4 id="app-update-auto-check-label">
+                                {{ 'SETTINGS.APP_UPDATE_AUTO_CHECK' | translate }}
+                            </h4>
+                            <p>
+                                {{
+                                    'SETTINGS.APP_UPDATE_AUTO_CHECK_DESCRIPTION'
+                                        | translate
+                                }}
+                            </p>
+                        </div>
+                        <div class="setting-item__control">
+                            <mat-slide-toggle
+                                formControlName="appUpdateAutoCheck"
+                                aria-labelledby="app-update-auto-check-label"
+                            ></mat-slide-toggle>
+                        </div>
+                    </div>
                 }
             }
         </div>
@@ -327,7 +354,7 @@
         >
             <a
                 class="link-card link-card--github"
-                href="https://github.com/4gray/iptvnator"
+                href="https://github.com/mkaand/iptvnator"
                 target="_blank"
                 rel="noreferrer noopener"
                 data-test-id="link-github"

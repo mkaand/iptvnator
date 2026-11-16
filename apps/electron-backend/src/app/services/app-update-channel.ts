@@ -2,11 +2,17 @@ import {
     AppUpdateChannel,
     normalizeAppUpdateChannel,
 } from '@iptvnator/shared/interfaces';
-import { APP_UPDATE_CHANNEL, store } from './store.service';
+import {
+    APP_UPDATE_AUTO_CHECK,
+    APP_UPDATE_CHANNEL,
+    store,
+} from './store.service';
 
 type AppUpdateChannelListener = (channel: AppUpdateChannel) => void;
+type AppUpdateAutoCheckListener = (enabled: boolean) => void;
 
 const listeners = new Set<AppUpdateChannelListener>();
+const autoCheckListeners = new Set<AppUpdateAutoCheckListener>();
 
 /**
  * The persisted update channel, read synchronously from the main-process
@@ -37,6 +43,24 @@ export function persistAppUpdateChannel(value: unknown): AppUpdateChannel {
     return channel;
 }
 
+export function readStoredAppUpdateAutoCheck(): boolean {
+    return store.get(APP_UPDATE_AUTO_CHECK) === true;
+}
+
+export function persistAppUpdateAutoCheck(value: unknown): boolean {
+    const enabled = value === true;
+    const previous = readStoredAppUpdateAutoCheck();
+    store.set(APP_UPDATE_AUTO_CHECK, enabled);
+
+    if (enabled !== previous) {
+        for (const listener of autoCheckListeners) {
+            listener(enabled);
+        }
+    }
+
+    return enabled;
+}
+
 export function onAppUpdateChannelChange(
     listener: AppUpdateChannelListener
 ): () => void {
@@ -44,5 +68,15 @@ export function onAppUpdateChannelChange(
 
     return () => {
         listeners.delete(listener);
+    };
+}
+
+export function onAppUpdateAutoCheckChange(
+    listener: AppUpdateAutoCheckListener
+): () => void {
+    autoCheckListeners.add(listener);
+
+    return () => {
+        autoCheckListeners.delete(listener);
     };
 }

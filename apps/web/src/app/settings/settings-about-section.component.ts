@@ -11,6 +11,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslateModule } from '@ngx-translate/core';
 import {
     AppUpdateChannel,
@@ -35,6 +36,7 @@ interface SettingsUpdateStatusChip {
         MatFormFieldModule,
         MatIconModule,
         MatSelectModule,
+        MatSlideToggleModule,
         ReactiveFormsModule,
         TranslateModule,
     ],
@@ -71,13 +73,18 @@ export class SettingsAboutSectionComponent {
 
         return commit ? commit.slice(0, 7) : undefined;
     });
+    readonly displayVersion = computed(() => {
+        const version = this.version()?.trim();
+
+        return version && !version.startsWith('v') ? `v${version}` : version;
+    });
 
     readonly checkForAppUpdate = output<void>();
     /**
      * Emitted instead of a plain check while the channel select shows a
      * channel the updater has not been told about yet. The host saves the
-     * form; the main process re-checks on its own once the saved channel
-     * changes, so one click yields the verdict the user is looking at.
+     * form and explicitly checks the newly saved channel, so automatic
+     * checking can stay disabled without weakening this manual action.
      */
     readonly saveAndCheckForAppUpdate = output<void>();
     readonly downloadAppUpdate = output<void>();
@@ -130,9 +137,8 @@ export class SettingsAboutSectionComponent {
     }
 
     /**
-     * Whether Save would make the updater re-check. A download in flight or
-     * finished belongs to the previous channel and is kept, so saving there
-     * changes the channel without a new verdict and the plain check stays.
+     * Whether the pending channel can be saved and checked now. A download in
+     * flight or finished belongs to the previous channel and is kept.
      */
     canSaveAndCheckForAppUpdate(): boolean {
         const status = this.appUpdateStatus()?.status;
@@ -181,7 +187,9 @@ export class SettingsAboutSectionComponent {
     /** The one-word verdict beside the app name in the hero. */
     readonly updateStatusChip = computed<SettingsUpdateStatusChip | null>(
         () => {
-            switch (this.appUpdateStatus()?.status) {
+            const status = this.appUpdateStatus();
+
+            switch (status?.status) {
                 case ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Available:
                 case ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloading:
                 case ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloaded:
@@ -190,6 +198,12 @@ export class SettingsAboutSectionComponent {
                         tone: 'accent',
                     };
                 case ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable:
+                    if (status.error) {
+                        return {
+                            labelKey: 'SETTINGS.APP_UPDATE_NO_RELEASE',
+                            tone: 'neutral',
+                        };
+                    }
                     return {
                         labelKey: 'SETTINGS.UPDATE_UP_TO_DATE',
                         tone: 'success',
@@ -276,4 +290,14 @@ export class SettingsAboutSectionComponent {
                 return 'SETTINGS.APP_UPDATE_IDLE';
         }
     });
+
+    hasNoPublishedRelease(): boolean {
+        const status = this.appUpdateStatus();
+
+        return (
+            status?.status ===
+                ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable &&
+            Boolean(status.error)
+        );
+    }
 }

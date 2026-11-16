@@ -22,6 +22,7 @@ type SettingsUpdateHandler = (
 
 const SETTINGS_UPDATE = 'SETTINGS_UPDATE';
 const STORE_KEYS = {
+    APP_UPDATE_AUTO_CHECK: 'APP_UPDATE_AUTO_CHECK',
     APP_UPDATE_CHANNEL: 'APP_UPDATE_CHANNEL',
     EMBEDDED_MPV_AUTO_RECONNECT: 'EMBEDDED_MPV_AUTO_RECONNECT',
     EMBEDDED_MPV_EXTRA_OPTIONS: 'EMBEDDED_MPV_EXTRA_OPTIONS',
@@ -52,6 +53,7 @@ jest.mock('electron', () => ({
 }));
 
 jest.mock('../services/store.service', () => ({
+    APP_UPDATE_AUTO_CHECK: STORE_KEYS.APP_UPDATE_AUTO_CHECK,
     APP_UPDATE_CHANNEL: STORE_KEYS.APP_UPDATE_CHANNEL,
     EMBEDDED_MPV_AUTO_RECONNECT: STORE_KEYS.EMBEDDED_MPV_AUTO_RECONNECT,
     EMBEDDED_MPV_EXTRA_OPTIONS: STORE_KEYS.EMBEDDED_MPV_EXTRA_OPTIONS,
@@ -269,6 +271,29 @@ describe('SETTINGS_UPDATE', () => {
             [STORE_KEYS.APP_UPDATE_CHANNEL, 'nightly'],
         ]);
         expect(listener).toHaveBeenCalledWith('nightly');
+    });
+
+    it('persists auto-check before notifying a simultaneous channel change', async () => {
+        const channelModule = await import('../services/app-update-channel');
+        const autoCheckListener = jest.fn();
+        const channelListener = jest.fn();
+        channelModule.onAppUpdateAutoCheckChange(autoCheckListener);
+        channelModule.onAppUpdateChannelChange(channelListener);
+
+        settingsUpdateHandler(
+            {},
+            { appUpdateAutoCheck: true, updateChannel: 'nightly' }
+        );
+
+        expect(mockStoreSet.mock.calls).toEqual([
+            [STORE_KEYS.APP_UPDATE_AUTO_CHECK, true],
+            [STORE_KEYS.APP_UPDATE_CHANNEL, 'nightly'],
+        ]);
+        expect(autoCheckListener).toHaveBeenCalledWith(true);
+        expect(channelListener).toHaveBeenCalledWith('nightly');
+        expect(autoCheckListener.mock.invocationCallOrder[0]).toBeLessThan(
+            channelListener.mock.invocationCallOrder[0]
+        );
     });
 
     it('normalizes an unknown update channel to stable and stays quiet when nothing changed', async () => {

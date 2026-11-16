@@ -89,6 +89,22 @@ describe('settings form utils — update channel', () => {
         const form = createSettingsForm(formBuilder, true);
 
         expect(form.getRawValue().updateChannel).toBe('stable');
+        expect(form.getRawValue().appUpdateAutoCheck).toBe(false);
+    });
+
+    it('persists automatic checks only after an explicit opt-in', () => {
+        const form = createSettingsForm(formBuilder, true);
+
+        expect(
+            createSettingsFromFormValue(form, {} as Settings)
+                .appUpdateAutoCheck
+        ).toBe(false);
+
+        form.patchValue({ appUpdateAutoCheck: true });
+        expect(
+            createSettingsFromFormValue(form, {} as Settings)
+                .appUpdateAutoCheck
+        ).toBe(true);
     });
 
     it('carries the chosen channel into the settings object', () => {

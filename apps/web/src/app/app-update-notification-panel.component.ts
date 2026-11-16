@@ -44,6 +44,8 @@ import { AppUpdateNotificationCardComponent } from './app-update-notification-ca
     styleUrl: './app-update-notification-panel.component.scss',
 })
 export class AppUpdateNotificationPanelComponent implements OnInit, OnDestroy {
+    private static readonly dismissalPrefix =
+        'iptvnator-app-update-dismissed-v1:mkaand/iptvnator';
     private unsubscribeStatus: (() => void) | null = null;
 
     readonly status = signal<ElectronBridgeAppUpdateStatus | null>(null);
@@ -55,7 +57,10 @@ export class AppUpdateNotificationPanelComponent implements OnInit, OnDestroy {
             return false;
         }
 
-        if (this.dismissedVersion() === status.latestVersion) {
+        if (
+            this.dismissedVersion() === this.dismissalKey(status) ||
+            this.wasDismissed(status)
+        ) {
             return false;
         }
 
@@ -91,6 +96,29 @@ export class AppUpdateNotificationPanelComponent implements OnInit, OnDestroy {
     }
 
     dismiss(): void {
-        this.dismissedVersion.set(this.status()?.latestVersion ?? null);
+        const status = this.status();
+        if (!status?.latestVersion) {
+            return;
+        }
+
+        const key = this.dismissalKey(status);
+        try {
+            localStorage.setItem(key, '1');
+        } catch {
+            // Storage is optional; the current-session signal still hides it.
+        }
+        this.dismissedVersion.set(key);
+    }
+
+    private dismissalKey(status: ElectronBridgeAppUpdateStatus): string {
+        return `${AppUpdateNotificationPanelComponent.dismissalPrefix}:${status.channel}:${status.latestVersion}`;
+    }
+
+    private wasDismissed(status: ElectronBridgeAppUpdateStatus): boolean {
+        try {
+            return localStorage.getItem(this.dismissalKey(status)) === '1';
+        } catch {
+            return false;
+        }
     }
 }

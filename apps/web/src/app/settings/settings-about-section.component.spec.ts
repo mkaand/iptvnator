@@ -50,7 +50,7 @@ describe('SettingsAboutSectionComponent app updates', () => {
             currentVersion: '0.22.0',
             latestVersion: '0.23.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Available,
             supportedSelfUpdate: true,
             channel: 'stable',
@@ -75,7 +75,7 @@ describe('SettingsAboutSectionComponent app updates', () => {
             currentVersion: '0.22.0',
             latestVersion: '0.23.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloaded,
             supportedSelfUpdate: true,
             channel: 'stable',
@@ -97,7 +97,7 @@ describe('SettingsAboutSectionComponent app updates', () => {
             currentVersion: '0.22.0',
             latestVersion: '0.22.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
             supportedSelfUpdate: true,
             channel: 'stable',
@@ -110,6 +110,35 @@ describe('SettingsAboutSectionComponent app updates', () => {
         expect(openNotes).toHaveBeenCalledTimes(1);
     });
 
+    it('shows an empty release channel as informational instead of up to date', () => {
+        configureComponent(fixture, {
+            currentVersion: '0.30.0',
+            manualDownloadUrl:
+                'https://github.com/mkaand/iptvnator/releases/latest',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+            supportedSelfUpdate: true,
+            channel: 'stable',
+            installedChannel: 'stable',
+            error: 'No stable release available.',
+        });
+
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="app-update-status-chip"]'
+            )?.textContent
+        ).toContain('SETTINGS.APP_UPDATE_NO_RELEASE');
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="app-update-status"]'
+            )?.textContent
+        ).toContain('No stable release available.');
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="app-update-status"]'
+            )?.textContent
+        ).not.toContain('SETTINGS.APP_UPDATE_NOT_AVAILABLE');
+    });
+
     it('emits a manual release request for unsupported Linux packages', () => {
         const openManual = jest.fn();
         fixture.componentInstance.openManualAppUpdate.subscribe(openManual);
@@ -117,7 +146,7 @@ describe('SettingsAboutSectionComponent app updates', () => {
             currentVersion: '0.22.0',
             latestVersion: '0.23.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Unsupported,
             supportedSelfUpdate: false,
             channel: 'stable',
@@ -134,7 +163,7 @@ describe('SettingsAboutSectionComponent app updates', () => {
         configureComponent(fixture, {
             currentVersion: '0.22.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Unsupported,
             supportedSelfUpdate: false,
             channel: 'stable',
@@ -171,6 +200,13 @@ describe('SettingsAboutSectionComponent version display', () => {
             '[data-test-id="app-build-commit"]'
         ) as HTMLElement | null;
     }
+
+    it('shows the installed version with the release tag prefix', () => {
+        fixture.componentRef.setInput('version', '0.30.0');
+        fixture.detectChanges();
+
+        expect(getVersionBlock().textContent?.trim()).toBe('v0.30.0');
+    });
 
     it('shows the shortened build commit next to the version on CI builds', () => {
         fixture.componentRef.setInput(
@@ -213,6 +249,9 @@ describe('SettingsAboutSectionComponent update channel', () => {
         status: Partial<ElectronBridgeAppUpdateStatus>,
         form: FormGroup | null
     ) => {
+        if (form && !form.contains('appUpdateAutoCheck')) {
+            form.addControl('appUpdateAutoCheck', new FormControl(false));
+        }
         fixture.componentRef.setInput('isDesktop', true);
         fixture.componentRef.setInput('form', form);
         fixture.componentRef.setInput(
@@ -222,7 +261,7 @@ describe('SettingsAboutSectionComponent update channel', () => {
         fixture.componentRef.setInput('appUpdateStatus', {
             currentVersion: '0.23.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Idle,
             supportedSelfUpdate: true,
             channel: 'stable',

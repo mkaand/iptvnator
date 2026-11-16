@@ -215,11 +215,11 @@ test('AppImage desktop metadata supports AppManager without changing other Linux
         assert.equal(fields['X-AppImage-Version'], version);
         assert.equal(
             fields['X-AppImage-Homepage'],
-            'https://github.com/4gray/iptvnator'
+            'https://github.com/mkaand/iptvnator'
         );
         assert.equal(
             fields['X-AppImage-UpdateURL'],
-            'https://github.com/4gray/iptvnator'
+            'https://github.com/mkaand/iptvnator'
         );
         assert.equal(fields.StartupWMClass, 'iptvnator');
         assert.equal(fields.Exec, 'AppRun --ozone-platform=x11 %U');

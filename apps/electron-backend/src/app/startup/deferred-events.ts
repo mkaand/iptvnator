@@ -46,7 +46,9 @@ import { registerConnectivityGuardHandlers } from '../events/connectivity-guard.
 import { traceStartupPhase } from '../services/debug-trace';
 import { AppUpdateService } from '../services/app-update.service';
 import {
+    onAppUpdateAutoCheckChange,
     onAppUpdateChannelChange,
+    readStoredAppUpdateAutoCheck,
     readStoredAppUpdateChannel,
 } from '../services/app-update-channel';
 import { databaseWorkerClient } from '../services/database-worker-client';
@@ -72,6 +74,7 @@ export function bootstrapDeferredEvents(
         app,
         appVersion: context.appVersion,
         channel: readStoredAppUpdateChannel(),
+        autoCheck: readStoredAppUpdateAutoCheck(),
         getMainWindow: () => App.mainWindow,
         updater: () => autoUpdater,
         // quitAndInstall() closes the windows before 'before-quit' fires
@@ -81,6 +84,9 @@ export function bootstrapDeferredEvents(
         cancelPreparedQuit: () => windowCloseGuard.revokeAllowedClose(),
     });
     AppUpdateEvents.bootstrapAppUpdateEvents(appUpdateService);
+    onAppUpdateAutoCheckChange((enabled) =>
+        appUpdateService.setAutoCheckEnabled(enabled)
+    );
     onAppUpdateChannelChange((channel) => appUpdateService.setChannel(channel));
 
     ElectronEvents.bootstrapElectronEvents();

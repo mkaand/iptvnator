@@ -21,7 +21,10 @@ import {
 import { httpServer } from '../server/http-server';
 import { setHostConnectivityGuardEnabled } from '../util/host-connectivity-guard';
 import { applyParentalLockState } from './parental-lock.events';
-import { persistAppUpdateChannel } from '../services/app-update-channel';
+import {
+    persistAppUpdateAutoCheck,
+    persistAppUpdateChannel,
+} from '../services/app-update-channel';
 
 export default class SettingsEvents {
     static bootstrapSettingsEvents(): Electron.IpcMain {
@@ -112,6 +115,11 @@ ipcMain.handle('SETTINGS_UPDATE', (_event, arg) => {
 
     // Mirrored for the startup update check, which runs before the renderer
     // exists; a change re-points the running updater immediately.
+    // Persist auto-check first: when both controls change in one Save, the
+    // following channel notification must use the new opt-in state.
+    if (arg.appUpdateAutoCheck !== undefined) {
+        persistAppUpdateAutoCheck(arg.appUpdateAutoCheck);
+    }
     if (arg.updateChannel !== undefined) {
         persistAppUpdateChannel(arg.updateChannel);
     }

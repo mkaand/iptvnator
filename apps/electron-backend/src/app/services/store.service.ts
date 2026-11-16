@@ -48,6 +48,8 @@ export const PARENTAL_LOCK_ENABLED = 'PARENTAL_LOCK_ENABLED';
  * `stable`. Read and written only through `app-update-channel.ts`.
  */
 export const APP_UPDATE_CHANNEL = 'APP_UPDATE_CHANNEL';
+/** Explicit opt-in for background update checks; absent intentionally means off. */
+export const APP_UPDATE_AUTO_CHECK = 'APP_UPDATE_AUTO_CHECK';
 
 /**
  * Local XMLTV files the EPG importer may read: every path the native picker
@@ -88,6 +90,7 @@ export type StoreType = {
     [PORTAL_CONNECTIVITY_GUARD]: boolean;
     [PARENTAL_LOCK_ENABLED]: boolean;
     [APP_UPDATE_CHANNEL]: AppUpdateChannel;
+    [APP_UPDATE_AUTO_CHECK]: boolean;
     [TRUSTED_LOCAL_EPG_SOURCES]: string[];
 };
 
