@@ -100,11 +100,7 @@
             "parallelism": false,
             "options": {
                 "cwd": "apps/electron-backend-e2e",
-                "commands": [
-                    "tsx --tsconfig tsconfig.json src/performance/phase5-packaged-acceptance.ts broad",
-                    "tsx --tsconfig tsconfig.json src/performance/phase5-packaged-acceptance.ts current"
-                ],
-                "parallel": false
+                "command": "tsx --tsconfig tsconfig.json src/performance/phase5-packaged-acceptance.ts compare"
             }
         },
         "phase5b-packaged-functional-acceptance": {

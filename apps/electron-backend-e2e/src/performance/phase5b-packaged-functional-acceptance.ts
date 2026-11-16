@@ -58,6 +58,7 @@ type Mode = 'broad' | 'current';
 type App = { application: ElectronApplication; page: Page };
 type Check = { name: string; result: 'PASS' | 'FAIL' | 'NOT TESTED'; detail?: string };
 type SearchCase = {
+    expectedStableChannelIdentities: string[];
     options: { limit: number; offset: number };
     query: string;
 };
@@ -87,13 +88,75 @@ type OwnedMockProcess = {
 };
 
 const mockPort = 3211;
+const streamUrl = (name: string) =>
+    `https://streams.example.test/${name}.m3u8`;
 const searchCases: SearchCase[] = [
-    { query: 'Phase5B', options: { limit: 50, offset: 0 } },
-    { query: 'News', options: { limit: 50, offset: 0 } },
-    { query: 'Sports', options: { limit: 50, offset: 0 } },
-    { query: 'not-present', options: { limit: 50, offset: 0 } },
-    { query: 'Phase5B', options: { limit: 1, offset: 0 } },
-    { query: 'Phase5B', options: { limit: 1, offset: 1 } },
+    {
+        query: 'Phase5B',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [
+            streamUrl('phase5b-news'),
+            streamUrl('phase5b-sports'),
+        ],
+    },
+    {
+        query: 'News',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [
+            streamUrl('phase5b-news'),
+            streamUrl('world-news'),
+        ],
+    },
+    {
+        query: 'Sports',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [streamUrl('phase5b-sports')],
+    },
+    {
+        query: 'World News',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [streamUrl('world-news')],
+    },
+    {
+        query: 'A&E',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [streamUrl('a-and-e')],
+    },
+    {
+        query: 'İNŞAAT CAFÉ',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [streamUrl('turkish-cafe')],
+    },
+    {
+        query: 'metadataonly',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [],
+    },
+    {
+        query: 'not-present',
+        options: { limit: 50, offset: 0 },
+        expectedStableChannelIdentities: [],
+    },
+    {
+        query: 'Phase5B',
+        options: { limit: 1, offset: 0 },
+        expectedStableChannelIdentities: [streamUrl('phase5b-news')],
+    },
+    {
+        query: 'Phase5B',
+        options: { limit: 1, offset: 1 },
+        expectedStableChannelIdentities: [streamUrl('phase5b-sports')],
+    },
+    {
+        query: 'Duplicate Channel',
+        options: { limit: 1, offset: 0 },
+        expectedStableChannelIdentities: [streamUrl('duplicate-alpha')],
+    },
+    {
+        query: 'Duplicate Channel',
+        options: { limit: 1, offset: 1 },
+        expectedStableChannelIdentities: [streamUrl('duplicate-beta')],
+    },
 ];
 
 function xmltvDate(date: Date): string {
@@ -378,6 +441,17 @@ async function captureSearchSnapshots(page: Page): Promise<SearchSnapshot[]> {
                 };
             });
         }, searchCase);
+        const actualStableChannelIdentities = results.map(
+            (result) => result.stableChannelIdentity
+        );
+        if (
+            JSON.stringify(actualStableChannelIdentities) !==
+            JSON.stringify(searchCase.expectedStableChannelIdentities)
+        ) {
+            throw new Error(
+                `search-fixture-expectation-mismatch:${JSON.stringify({ actualStableChannelIdentities, searchCase })}`
+            );
+        }
         snapshots.push({ case: searchCase, results });
     }
     return snapshots;
@@ -396,23 +470,180 @@ function assertSearchEquivalent(
     }
 }
 
+type CleanupStep = {
+    name: string;
+    run: () => Promise<void>;
+};
+
+async function collectCleanupFailures(steps: CleanupStep[]): Promise<Error[]> {
+    const results = await Promise.allSettled(
+        steps.map((step) => Promise.resolve().then(step.run))
+    );
+    return results.flatMap((result, index) =>
+        result.status === 'rejected'
+            ? [
+                  new Error(`cleanup-failed:${steps[index]?.name ?? index}`, {
+                      cause: result.reason,
+                  }),
+              ]
+            : []
+    );
+}
+
+function throwAfterCleanup(
+    originalFailure: unknown,
+    cleanupFailures: Error[],
+    message: string
+): void {
+    if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+            [
+                ...(originalFailure === undefined ? [] : [originalFailure]),
+                ...cleanupFailures,
+            ],
+            message,
+            { cause: originalFailure }
+        );
+    }
+    if (originalFailure !== undefined) throw originalFailure;
+}
+
+export async function runLifecycleSelfTest(): Promise<{
+    cleanupFailurePreserved: boolean;
+    independentCleanup: boolean;
+    partialSetupCleaned: boolean;
+}> {
+    const partialSetupEvents: string[] = [];
+    let firstResource: { close: () => Promise<void> } | undefined;
+    let secondResource: { close: () => Promise<void> } | undefined;
+    const setupFailure = new Error('deterministic-partial-setup-failure');
+    let observedSetupFailure: unknown;
+    try {
+        firstResource = {
+            close: async () => {
+                partialSetupEvents.push('first-closed');
+            },
+        };
+        throw setupFailure;
+    } catch (failure) {
+        observedSetupFailure = failure;
+    }
+    const partialCleanupFailures = await collectCleanupFailures([
+        {
+            name: 'first-resource',
+            run: () => firstResource?.close() ?? Promise.resolve(),
+        },
+        {
+            name: 'second-resource',
+            run: () => secondResource?.close() ?? Promise.resolve(),
+        },
+    ]);
+    let rethrownSetupFailure: unknown;
+    try {
+        throwAfterCleanup(
+            observedSetupFailure,
+            partialCleanupFailures,
+            'partial setup cleanup failed'
+        );
+    } catch (failure) {
+        rethrownSetupFailure = failure;
+    }
+    if (
+        rethrownSetupFailure !== setupFailure ||
+        partialSetupEvents.join(',') !== 'first-closed'
+    ) {
+        throw new Error('partial-setup-cleanup-self-test-failed');
+    }
+
+    const cleanupEvents: string[] = [];
+    const cleanupFailure = new Error('deterministic-cleanup-failure');
+    const independentCleanupFailures = await collectCleanupFailures([
+        {
+            name: 'before-failure',
+            run: async () => {
+                cleanupEvents.push('before');
+            },
+        },
+        {
+            name: 'failing-resource',
+            run: async () => {
+                cleanupEvents.push('failure');
+                throw cleanupFailure;
+            },
+        },
+        {
+            name: 'after-failure',
+            run: async () => {
+                cleanupEvents.push('after');
+            },
+        },
+    ]);
+    let aggregate: unknown;
+    try {
+        throwAfterCleanup(
+            setupFailure,
+            independentCleanupFailures,
+            'deterministic cleanup aggregation'
+        );
+    } catch (failure) {
+        aggregate = failure;
+    }
+    if (
+        !(aggregate instanceof AggregateError) ||
+        aggregate.errors[0] !== setupFailure ||
+        !(aggregate.errors[1] instanceof Error) ||
+        aggregate.errors[1].cause !== cleanupFailure ||
+        cleanupEvents.join(',') !== 'before,failure,after'
+    ) {
+        throw new Error('independent-cleanup-self-test-failed');
+    }
+
+    return {
+        cleanupFailurePreserved: true,
+        independentCleanup: true,
+        partialSetupCleaned: true,
+    };
+}
+
 async function run(mode: Mode): Promise<ModeResult> {
     const suffix = new Date().toISOString().replace(/[:.]/g, '-');
     const dataDir = join(profileRoot, `phase5b-${mode}-functional-${suffix}`);
     if (existsSync(dataDir)) throw new Error(`refusing-existing-profile:${dataDir}`);
     const checks: Check[] = [];
     const warnings: string[] = [];
-    const epgServer = await createMutableTextServer(currentXmltv(), { contentType: 'application/xml; charset=utf-8', resourcePath: '/phase5b.xml' });
-    const playlist = buildM3uContent([
-        { name: 'Phase5B News', tvgId: 'phase5b-news', tvgName: 'Phase5B News', logo, groupTitle: 'Live', url: 'https://streams.example.test/phase5b-news.m3u8' },
-        { name: 'Phase5B Sports', tvgId: 'phase5b-sports', logo, groupTitle: 'Live', url: 'https://streams.example.test/phase5b-sports.m3u8' },
-    ]).replace('#EXTM3U', `#EXTM3U x-tvg-url="${epgServer.resourceUrl}"`);
-    const playlistServer = await createMutableTextServer(playlist, { contentType: 'application/x-mpegurl; charset=utf-8', resourcePath: '/phase5b.m3u' });
-    const api = await request.newContext();
+    let epgServer:
+        | Awaited<ReturnType<typeof createMutableTextServer>>
+        | undefined;
+    let playlistServer:
+        | Awaited<ReturnType<typeof createMutableTextServer>>
+        | undefined;
+    let api: Awaited<ReturnType<typeof request.newContext>> | undefined;
     let app: App | undefined;
     let modeResult: ModeResult | undefined;
     let runFailure: unknown;
     try {
+        epgServer = await createMutableTextServer(currentXmltv(), {
+            contentType: 'application/xml; charset=utf-8',
+            resourcePath: '/phase5b.xml',
+        });
+        const playlist = buildM3uContent([
+            { name: 'Phase5B News', tvgId: 'phase5b-news', tvgName: 'Phase5B News', logo, groupTitle: 'Live', url: streamUrl('phase5b-news') },
+            { name: 'Phase5B Sports', tvgId: 'phase5b-sports', logo, groupTitle: 'Live', url: streamUrl('phase5b-sports') },
+            { name: 'World News Live', tvgId: 'world-news', groupTitle: 'International', url: streamUrl('world-news') },
+            { name: 'US: A&E HD', tvgId: 'a-and-e', groupTitle: 'Entertainment', url: streamUrl('a-and-e') },
+            { name: 'İnşaat Café', tvgId: 'turkish-cafe', tvgName: 'İnşaat Café', groupTitle: 'Kültür', url: streamUrl('turkish-cafe') },
+            { name: 'Ordinary Metadata', tvgId: 'metadata-decoy', groupTitle: 'Decoys', url: 'https://metadataonly.example.test/decoy.m3u8' },
+            { name: 'Duplicate Channel Alpha', tvgId: 'duplicate-alpha', groupTitle: 'Duplicate', url: streamUrl('duplicate-alpha') },
+            { name: 'Duplicate Channel Beta', tvgId: 'duplicate-beta', groupTitle: 'Duplicate', url: streamUrl('duplicate-beta') },
+        ]).replace(
+            '#EXTM3U',
+            `#EXTM3U x-tvg-url="${epgServer.resourceUrl}"`
+        );
+        playlistServer = await createMutableTextServer(playlist, {
+            contentType: 'application/x-mpegurl; charset=utf-8',
+            resourcePath: '/phase5b.m3u',
+        });
+        api = await request.newContext();
         const step = (name: string) => console.error(`[phase5b:${mode}] ${name}`);
         step('resetting mock and reading fixtures');
         await resetMockServers(api, ['xtream']);
@@ -570,11 +801,6 @@ async function run(mode: Mode): Promise<ModeResult> {
         step('xtream recent passed');
 
         const searches = await captureSearchSnapshots(page);
-        if (searches[0]?.results.length !== 2) {
-            throw new Error(
-                `global-search-fixture-result-mismatch:${JSON.stringify(searches[0])}`
-            );
-        }
 
         step('restarting packaged app');
         await close(app); app = undefined;
@@ -617,25 +843,33 @@ async function run(mode: Mode): Promise<ModeResult> {
             { phase5b: { checks, dataDir, warnings } }
         );
     }
-    const cleanupResults = await Promise.allSettled([
-        close(app),
-        api.dispose(),
-        playlistServer.close(),
-        epgServer.close(),
+    const cleanupFailures = await collectCleanupFailures([
+        { name: 'electron', run: () => close(app) },
+        {
+            name: 'api-context',
+            run: () => api?.dispose() ?? Promise.resolve(),
+        },
+        {
+            name: 'playlist-server',
+            run: () => playlistServer?.close() ?? Promise.resolve(),
+        },
+        {
+            name: 'epg-server',
+            run: () => epgServer?.close() ?? Promise.resolve(),
+        },
     ]);
-    const cleanupFailures = cleanupResults.flatMap((result) =>
-        result.status === 'rejected' ? [result.reason] : []
-    );
-    if (cleanupFailures.length > 0) {
-        const combined = new AggregateError(
-            [...(runFailure ? [runFailure] : []), ...cleanupFailures],
-            'phase5b run cleanup failed',
-            { cause: runFailure }
+    try {
+        throwAfterCleanup(
+            runFailure,
+            cleanupFailures,
+            'phase5b run cleanup failed'
         );
-        Object.assign(combined, { phase5b: { checks, dataDir, warnings } });
-        throw combined;
+    } catch (failure) {
+        Object.assign(failure as object, {
+            phase5b: { checks, dataDir, warnings },
+        });
+        throw failure;
     }
-    if (runFailure) throw runFailure;
     if (!modeResult) throw new Error('phase5b-mode-result-missing');
     return modeResult;
 }
@@ -663,9 +897,23 @@ async function runWithOwnedMock(mode: Mode): Promise<ModeResult> {
     return modeResult;
 }
 
-async function main(): Promise<void> {
-    if (process.argv[2] !== 'compare') throw new Error('mode-must-be-compare');
+export async function runPhase5bAcceptance(
+    command: string | undefined = process.argv[2]
+): Promise<void> {
+    if (command === 'lifecycle-self-test') {
+        console.log(
+            JSON.stringify({
+                lifecycleSelfTest: await runLifecycleSelfTest(),
+                result: 'PASS',
+            })
+        );
+        return;
+    }
+    if (command !== 'compare') {
+        throw new Error('mode-must-be-compare-or-lifecycle-self-test');
+    }
     if (!existsSync(executablePath)) throw new Error(`missing-exe:${executablePath}`);
+    const lifecycleSelfTest = await runLifecycleSelfTest();
     const broad = await runWithOwnedMock('broad');
     const legacy = await runWithOwnedMock('current');
     assertSearchEquivalent(broad.searches, legacy.searches);
@@ -677,6 +925,7 @@ async function main(): Promise<void> {
         JSON.stringify(
             {
                 executablePath,
+                lifecycleSelfTest,
                 result,
                 scores: 'NOT COMPARABLE: the packaged bridge does not expose search scores',
                 searchEquivalence: broad.searches,
@@ -688,7 +937,23 @@ async function main(): Promise<void> {
     );
 }
 
-void main().catch((failure: unknown) => {
-    console.error(JSON.stringify({ error: failure instanceof Error ? failure.message : String(failure), phase5b: (failure as { phase5b?: unknown })?.phase5b }, null, 2));
+function reportFailure(failure: unknown): void {
+    console.error(
+        JSON.stringify(
+            {
+                error:
+                    failure instanceof Error
+                        ? failure.message
+                        : String(failure),
+                phase5b: (failure as { phase5b?: unknown })?.phase5b,
+            },
+            null,
+            2
+        )
+    );
     process.exitCode = 1;
-});
+}
+
+if (require.main === module) {
+    void runPhase5bAcceptance().catch(reportFailure);
+}
