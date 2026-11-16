@@ -226,6 +226,8 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
     readonly sidebarToggleRequested = output<void>();
     /** Groups view only: the group whose channels are currently listed. */
     readonly selectedGroupChange = output<string | null>();
+    /** Selected Groups pane; scopes EPG work without changing displayed content. */
+    private selectedGroupKey: string | null = null;
     private readonly routeSearchTerm = queryParamSignal(
         this.route,
         'q',
@@ -282,6 +284,22 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
         });
     });
     private appliedEpgMatchOrder = '';
+    private appliedEpgView: string | null = null;
+    private readonly epgViewRefreshEffect = effect(() => {
+        const view = this.activeView();
+        if (this.appliedEpgView === view) return;
+
+        const isInitial = this.appliedEpgView === null;
+        this.appliedEpgView = view;
+        if (isInitial || this._channelList.length === 0) return;
+
+        if (view === 'groups') {
+            // The newly created Groups view will emit its actual selection.
+            // Do not briefly reuse a group retained by the previous instance.
+            this.selectedGroupKey = null;
+        }
+        untracked(() => this.fetchEpgForChannels(this._channelList));
+    });
     private readonly epgMatchingRefreshEffect = effect(() => {
         const key = (this.settingsStore.resolvedEpgMatchOrder?.() ??
             DEFAULT_EPG_MATCH_ORDER).join('|');
@@ -556,6 +574,7 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
      * Fetches EPG data for all channels
      */
     private async fetchEpgForChannels(channels: Channel[]): Promise<void> {
+        const epgChannels = this.getEpgChannelsForCurrentView(channels);
         // A fetch started for a previous channel list, EPG scope or display
         // offset must not install its map after this one: cancel it first.
         const request = ++this.epgAliasGeneration;
@@ -565,7 +584,7 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
             this.channelIconMap.set(new Map());
             return;
         }
-        if (!channels || channels.length === 0) {
+        if (epgChannels.length === 0) {
             replaceExactEpgNameAliases(new Map());
             this.channelEpgMap.set(new Map());
             this.channelIconMap.set(new Map());
@@ -578,7 +597,7 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
         try {
             const rawKeys = Array.from(
                 new Set(
-                    channels
+                    epgChannels
                         .map((channel) => resolveRawChannelEpgLookupKey(channel))
                         .filter(Boolean)
                 )
@@ -594,7 +613,7 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
             const imported = guide?.channels ?? [];
             replaceExactEpgNameAliases(
                 buildExactEpgNameAliases(
-                    channels,
+                    epgChannels,
                     imported,
                     manual ?? {},
                     this.settingsStore.resolvedEpgMatchOrder?.() ?? DEFAULT_EPG_MATCH_ORDER
@@ -608,7 +627,7 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
 
         const channelIds = Array.from(
             new Set(
-                channels
+                epgChannels
                     .map((channel) => resolveChannelEpgLookupKey(channel))
                     .filter((id) => !!id)
             )
@@ -670,6 +689,22 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
                 )
             );
         });
+    }
+
+    onSelectedGroupChanged(groupKey: string | null): void {
+        if (this.selectedGroupKey === groupKey) {
+            this.selectedGroupChange.emit(groupKey);
+            return;
+        }
+        this.selectedGroupKey = groupKey;
+        this.selectedGroupChange.emit(groupKey);
+        void this.fetchEpgForChannels(this._channelList);
+    }
+
+    private getEpgChannelsForCurrentView(channels: Channel[]): Channel[] {
+        if (this.activeView() !== 'groups') return channels ?? [];
+        if (!this.selectedGroupKey) return [];
+        return this.groupedChannels()[this.selectedGroupKey] ?? [];
     }
 
     private getPlaylistEpgLookupOptions():
