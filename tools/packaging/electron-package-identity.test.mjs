@@ -291,7 +291,7 @@ test('GitHub Releases auto-update metadata is generated and uploaded', () => {
     assert.deepEqual(electronBuilderConfig.publish, [
         {
             provider: 'github',
-            owner: '4gray',
+            owner: 'mkaand',
             repo: 'iptvnator',
         },
     ]);
@@ -457,7 +457,7 @@ test('package layout verifier uses canonical helpers and direct dependencies', (
     );
 
     const launcherVerifier = packageLayoutVerifier.match(
-        /function verifyLinuxLauncher\([\s\S]*?\n}\n\nfunction verifyFlatpakPermissions/
+        /function verifyLinuxLauncher\([\s\S]*?\r?\n}\r?\n\r?\nfunction verifyFlatpakPermissions/
     )?.[0];
     assert.ok(launcherVerifier);
     assert.ok(

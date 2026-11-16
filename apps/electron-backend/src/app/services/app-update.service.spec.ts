@@ -723,6 +723,38 @@ describe('AppUpdateService', () => {
         });
     });
 
+    it('treats a missing stable GitHub latest release as informational', () => {
+        const { service } = createService();
+        const error = Object.assign(
+            new Error(
+                'Unable to find latest version on GitHub: HttpError: 404 Not Found'
+            ),
+            { code: 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' }
+        );
+
+        service.handleError(error);
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'No stable release available.',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+        });
+    });
+
+    it('keeps a latest-release updater network failure as an error', () => {
+        const { service } = createService();
+        const error = Object.assign(
+            new Error('Unable to find latest version on GitHub: network down'),
+            { code: 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' }
+        );
+
+        service.handleError(error);
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'Unable to find latest version on GitHub: network down',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Error,
+        });
+    });
+
     it.each([403, 404, 500])(
         'keeps an unrelated HTTP %s failure as an error',
         (statusCode) => {

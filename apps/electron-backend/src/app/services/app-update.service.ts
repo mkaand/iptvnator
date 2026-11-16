@@ -158,11 +158,14 @@ function updaterErrorCode(error: unknown): string | undefined {
 
 function isNoCompatiblePublishedRelease(error: unknown): boolean {
     const code = updaterErrorCode(error);
+    const message = normalizeError(error);
 
     return (
         code === 'ERR_UPDATER_NO_PUBLISHED_VERSIONS' ||
         code === 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' ||
-        normalizeError(error).includes('No published versions on GitHub')
+        message.includes('No published versions on GitHub') ||
+        (code === 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' &&
+            /(?:HTTP(?:Error)?[: ]+|status(?: code)?[: ]+)404\b/i.test(message))
     );
 }
 
