@@ -3,10 +3,11 @@
     <router-outlet (activate)="routeReady.set(true)" />
 </div>
 
-<app-epg-progress-panel />
+@defer (on immediate) {
+    <app-epg-progress-panel />
+    <app-update-notification-panel />
 
-<app-update-notification-panel />
-
-@if (usesCustomWindowControls) {
-    <app-window-controls />
+    @if (runtime.usesCustomWindowControls) {
+        <app-window-controls />
+    }
 }

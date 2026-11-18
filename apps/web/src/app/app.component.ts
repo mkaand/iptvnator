@@ -38,7 +38,6 @@ import {
     Settings,
     STORE_KEY,
     Theme,
-    createDevLogger,
 } from '@iptvnator/shared/interfaces';
 import { AppDateLocaleService } from './app-date-locales';
 import { EpgAutoRefreshService } from './services/epg-auto-refresh.service';
@@ -49,8 +48,6 @@ import { PlaylistOpenRequestService } from './services/playlist-open-request.ser
 import { AppUpdateNotificationPanelComponent } from './app-update-notification-panel.component';
 import { AppStartupStatusComponent } from './app-startup-status.component';
 import { syncDocumentLanguage } from './services/document-language';
-
-const debugAppComponent = createDevLogger('AppComponent');
 
 @Component({
     selector: 'app-root',
@@ -66,9 +63,6 @@ const debugAppComponent = createDevLogger('AppComponent');
 })
 export class AppComponent implements OnInit {
     readonly routeReady = signal(false);
-    get usesCustomWindowControls() {
-        return this.runtime.usesCustomWindowControls;
-    }
     private actions$ = inject(Actions);
     private dataService = inject(DataService);
     private readonly dateLocales = inject(AppDateLocaleService);
@@ -88,7 +82,7 @@ export class AppComponent implements OnInit {
         ParentalLockEnforcementService
     );
     private playlistOpenRequests = inject(PlaylistOpenRequestService);
-    private runtime = inject(RuntimeCapabilitiesService);
+    readonly runtime = inject(RuntimeCapabilitiesService);
     private readonly workspaceShellActions = inject(WORKSPACE_SHELL_ACTIONS);
     private readonly contextDrawer = inject(WorkspaceShellContextDrawerService);
 
@@ -245,9 +239,6 @@ export class AppComponent implements OnInit {
             }
 
             if (result.freshUrls.length > 0) {
-                debugAppComponent(
-                    `EPG: ${result.freshUrls.length} source(s) already fresh, skipping fetch`
-                );
                 // Show snackbar if all EPG sources are fresh (no stale URLs)
                 if (result.staleUrls.length === 0) {
                     void this.snackBar.open(
@@ -259,9 +250,6 @@ export class AppComponent implements OnInit {
             }
 
             if (result.staleUrls.length > 0) {
-                debugAppComponent(
-                    `EPG: Fetching ${result.staleUrls.length} stale source(s)`
-                );
                 await fetchCurrentSources(result.staleUrls);
             }
         } catch (error) {
@@ -297,9 +285,6 @@ export class AppComponent implements OnInit {
 
                         // Trigger auto-update if there are playlists to update
                         if (playlistsToUpdate.length > 0) {
-                            debugAppComponent(
-                                `Auto-updating ${playlistsToUpdate.length} playlist(s) on startup`
-                            );
                             this.dataService.sendIpcEvent(
                                 AUTO_UPDATE_PLAYLISTS,
                                 playlistsToUpdate

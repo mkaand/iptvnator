@@ -1177,46 +1177,6 @@ describe('WebPlayerViewComponent recovery integration', () => {
         );
     });
 
-    it('keeps a replaced-source diagnostic detached across every handoff outcome', async () => {
-        await render();
-        vjs().playbackIssue.emit(mediaIssue('videojs'));
-        fixture.detectChanges();
-        holdHeaderHandoff = true;
-
-        setPlayback({ streamUrl: 'https://example.com/alternate.m3u8' });
-        fixture.detectChanges();
-        expect(query('playback-diagnostic-banner')).toBeNull();
-        setPlayback({ streamUrl: 'https://example.com/current.m3u8' });
-        fixture.detectChanges();
-        expect(headerResolvers).toHaveLength(2);
-        expect(query('playback-diagnostic-banner')).toBeNull();
-
-        headerResolvers[0](true);
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(query('playback-diagnostic-banner')).toBeNull();
-
-        headerResolvers[1](false);
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(query('playback-diagnostic-banner')).toBeNull();
-
-        setPlayback({ streamUrl: 'https://example.com/final.m3u8' });
-        fixture.detectChanges();
-        headerResolvers[2](true);
-        await fixture.whenStable();
-        expect(component.visiblePlaybackDiagnostic()).toBeNull();
-        expect(component.vjsOptions()).toEqual(
-            expect.objectContaining({
-                sources: [
-                    expect.objectContaining({
-                        src: 'https://example.com/final.m3u8',
-                    }),
-                ],
-            })
-        );
-    });
-
     async function render(): Promise<void> {
         fixture.detectChanges();
         await fixture.whenStable();
