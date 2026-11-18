@@ -79,7 +79,7 @@ import type { M3uContentIndex, M3uContentKind } from '@iptvnator/shared/m3u-util
             background: color-mix(in srgb, currentColor 9%, transparent);
         }
         .m3u-content-navigation__item--active, .m3u-content-navigation__mode--active {
-            color: var(--app-primary-color, #437bff) !important;
+            color: #437bff !important;
             background: color-mix(in srgb, #437bff 12%, transparent) !important;
         }
         .m3u-content-navigation__count { font-size: 11px; opacity: 0.8; font-variant-numeric: tabular-nums; }
