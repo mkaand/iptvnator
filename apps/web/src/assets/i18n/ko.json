@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "자녀 보호가 꺼졌습니다",
             "PIN_CHANGED_TOAST": "PIN이 변경되었습니다",
             "LOCKED_TOAST": "잠겼습니다"
-        }
+        },
+        "EPG_AUTO_REFRESH": "EPG 자동 새로고침",
+        "EPG_AUTO_REFRESH_DESC": "앱이 실행 중일 때 설정된 XMLTV 소스를 자동으로 업데이트합니다.",
+        "EPG_REFRESH_ON_STARTUP": "시작할 때 EPG 새로고침",
+        "EPG_REFRESH_ON_STARTUP_DESC": "IPTVnator를 시작할 때 저장된 EPG 소스를 강제로 새로고침합니다.",
+        "EPG_REFRESH_INTERVAL": "새로고침 간격",
+        "EPG_REFRESH_INTERVAL_DESC": "자동 새로고침 주기를 하나 선택하세요.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "마지막 라이브 채널 재생",
+        "APP_UPDATE_NO_RELEASE": "사용 가능한 릴리스 없음",
+        "APP_UPDATE_AUTO_CHECK": "업데이트 자동 확인",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "기본적으로 꺼져 있습니다. 언제든 수동으로 확인할 수 있습니다."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "서버에 저장하지 못했습니다. 연결을 확인하고 다시 시도하세요.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "캐시된 카테고리를 제거하는 중...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "즐겨찾기, 시청 기록, 숨긴 카테고리, 재생 진행률을 동기화 후 복원할 수 있도록 준비합니다.",
             "XTREAM_REFRESH_PROGRESS": "처리된 로컬 레코드: {{current}} / {{total}}",
-            "RAIL_RADIO": "라디오"
+            "RAIL_RADIO": "라디오",
+            "RAIL_UNCLASSIFIED": "분류되지 않음"
         },
         "SOURCES": {
             "TITLE": "소스",

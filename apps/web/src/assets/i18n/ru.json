@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "Родительский контроль выключен",
             "PIN_CHANGED_TOAST": "PIN изменён",
             "LOCKED_TOAST": "Заблокировано"
-        }
+        },
+        "EPG_AUTO_REFRESH": "Автоматическое обновление телепрограммы",
+        "EPG_AUTO_REFRESH_DESC": "Автоматически обновлять настроенные источники XMLTV во время работы приложения.",
+        "EPG_REFRESH_ON_STARTUP": "Обновлять телепрограмму при запуске",
+        "EPG_REFRESH_ON_STARTUP_DESC": "Принудительно обновлять сохранённые источники EPG при запуске IPTVnator.",
+        "EPG_REFRESH_INTERVAL": "Интервал обновления",
+        "EPG_REFRESH_INTERVAL_DESC": "Выберите частоту автоматического обновления.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "Воспроизвести последний телеканал",
+        "APP_UPDATE_NO_RELEASE": "Нет доступных выпусков",
+        "APP_UPDATE_AUTO_CHECK": "Автоматически проверять обновления",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "По умолчанию отключено. Вы можете проверить вручную в любое время."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "Не удалось сохранить на сервер. Проверьте подключение и попробуйте снова.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Удаляем кэшированные категории...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Избранное, история просмотра, скрытые категории и прогресс воспроизведения будут подготовлены для восстановления после синхронизации.",
             "XTREAM_REFRESH_PROGRESS": "Обработано локальных записей: {{current}} / {{total}}",
-            "RAIL_RADIO": "Радио"
+            "RAIL_RADIO": "Радио",
+            "RAIL_UNCLASSIFIED": "Без категории"
         },
         "SOURCES": {
             "TITLE": "Источники",

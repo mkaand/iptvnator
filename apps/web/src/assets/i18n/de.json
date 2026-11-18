@@ -665,7 +665,11 @@
             "DISABLED_TOAST": "Kindersicherung deaktiviert",
             "PIN_CHANGED_TOAST": "PIN geändert",
             "LOCKED_TOAST": "Gesperrt"
-        }
+        },
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "Letzten Live-Kanal wiedergeben",
+        "APP_UPDATE_NO_RELEASE": "Keine Veröffentlichung verfügbar",
+        "APP_UPDATE_AUTO_CHECK": "Automatisch nach Updates suchen",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "Standardmäßig deaktiviert. Eine manuelle Prüfung ist jederzeit möglich."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "Speichern auf dem Server fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
@@ -1952,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Zwischengespeicherte Kategorien werden entfernt...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Favoriten, Wiedergabeverlauf, ausgeblendete Kategorien und Wiedergabefortschritt werden für die Wiederherstellung nach der Synchronisierung vorbereitet.",
             "XTREAM_REFRESH_PROGRESS": "Lokale Einträge verarbeitet: {{current}} / {{total}}",
-            "RAIL_RADIO": "Live-Radio"
+            "RAIL_RADIO": "Live-Radio",
+            "RAIL_UNCLASSIFIED": "Nicht klassifiziert"
         },
         "SOURCES": {
             "TITLE": "Quellen",

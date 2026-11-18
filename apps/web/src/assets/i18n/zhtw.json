@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "已停用家長監護",
             "PIN_CHANGED_TOAST": "已變更 PIN 碼",
             "LOCKED_TOAST": "已鎖定"
-        }
+        },
+        "EPG_AUTO_REFRESH": "自動重新整理節目表",
+        "EPG_AUTO_REFRESH_DESC": "應用程式執行期間自動更新已設定的 XMLTV 來源。",
+        "EPG_REFRESH_ON_STARTUP": "啟動時重新整理節目表",
+        "EPG_REFRESH_ON_STARTUP_DESC": "啟動 IPTVnator 時強制重新整理已儲存的節目表來源。",
+        "EPG_REFRESH_INTERVAL": "重新整理間隔",
+        "EPG_REFRESH_INTERVAL_DESC": "選擇一種自動重新整理頻率。",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "播放上次觀看的直播頻道",
+        "APP_UPDATE_NO_RELEASE": "沒有可用版本",
+        "APP_UPDATE_AUTO_CHECK": "自動檢查更新",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "預設關閉。您仍可隨時手動檢查。"
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "無法儲存到伺服器。請檢查連線後再試一次。",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "正在移除快取的分類...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "我的最愛、觀看記錄、隱藏分類和播放進度會保留，以便同步後還原。",
             "XTREAM_REFRESH_PROGRESS": "已處理本機記錄：{{current}} / {{total}}",
-            "RAIL_RADIO": "廣播"
+            "RAIL_RADIO": "廣播",
+            "RAIL_UNCLASSIFIED": "未分類"
         },
         "SOURCES": {
             "TITLE": "來源",

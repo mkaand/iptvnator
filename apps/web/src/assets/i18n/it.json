@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "Controllo parentale disattivato",
             "PIN_CHANGED_TOAST": "PIN cambiato",
             "LOCKED_TOAST": "Bloccato"
-        }
+        },
+        "EPG_AUTO_REFRESH": "Aggiornamento automatico della guida EPG",
+        "EPG_AUTO_REFRESH_DESC": "Aggiorna automaticamente le fonti XMLTV configurate mentre l'app è in esecuzione.",
+        "EPG_REFRESH_ON_STARTUP": "Aggiorna la guida all'avvio",
+        "EPG_REFRESH_ON_STARTUP_DESC": "Forza l'aggiornamento delle fonti EPG salvate all'avvio di IPTVnator.",
+        "EPG_REFRESH_INTERVAL": "Intervallo di aggiornamento",
+        "EPG_REFRESH_INTERVAL_DESC": "Seleziona una frequenza di aggiornamento automatico.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "Riproduci l'ultimo canale in diretta",
+        "APP_UPDATE_NO_RELEASE": "Nessuna versione disponibile",
+        "APP_UPDATE_AUTO_CHECK": "Controlla automaticamente gli aggiornamenti",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "Disattivato per impostazione predefinita. Puoi verificare manualmente in qualsiasi momento."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "Impossibile salvare sul server. Controlla la connessione e riprova.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Rimozione delle categorie in cache...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Preferiti, cronologia di visione, categorie nascoste e avanzamento di riproduzione vengono preparati per il ripristino dopo la sincronizzazione.",
             "XTREAM_REFRESH_PROGRESS": "Record locali elaborati: {{current}} / {{total}}",
-            "RAIL_RADIO": "Radio live"
+            "RAIL_RADIO": "Radio live",
+            "RAIL_UNCLASSIFIED": "Non classificato"
         },
         "SOURCES": {
             "TITLE": "Sorgenti",
