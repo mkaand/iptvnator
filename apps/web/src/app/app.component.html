@@ -3,7 +3,7 @@
     <router-outlet (activate)="routeReady.set(true)" />
 </div>
 
-@defer (on immediate) {
+@defer (on idle) {
     <app-epg-progress-panel />
     <app-update-notification-panel />
 

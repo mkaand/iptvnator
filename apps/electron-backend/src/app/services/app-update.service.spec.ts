@@ -56,7 +56,7 @@ const nightlyReleases = [
 
 /** The fork keeps stable and nightly releases in the same repository. */
 function createChannelReleaseFetcher() {
-    return jest.fn(async () => {
+    return jest.fn(async (_url: string) => {
         return {
             json: jest.fn().mockResolvedValue([
                 ...githubReleases,
