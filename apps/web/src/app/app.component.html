@@ -3,11 +3,14 @@
     <router-outlet (activate)="routeReady.set(true)" />
 </div>
 
-@defer (on idle) {
-    <app-epg-progress-panel />
-    <app-update-notification-panel />
-
+@defer (on immediate) {
     @if (runtime.usesCustomWindowControls) {
         <app-window-controls />
     }
+}
+
+<!-- Background panels are not needed for the first content card. -->
+@defer (on timer(2500ms)) {
+    <app-epg-progress-panel />
+    <app-update-notification-panel />
 }
