@@ -9,9 +9,12 @@
     }
 }
 
-<!-- Mount background status listeners at browser idle instead of waiting a fixed
-     2.5 seconds: short EPG imports must not finish before their panel exists. -->
-@defer (on idle) {
+<!-- Listen for progress immediately, but render only when an import appears. -->
+@defer (when epgProgress.isVisible()) {
     <app-epg-progress-panel />
+}
+
+<!-- The updater's lightweight status listener is live from app construction. -->
+@defer (when mountUpdatePanel()) {
     <app-update-notification-panel />
 }

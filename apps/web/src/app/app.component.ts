@@ -1,5 +1,6 @@
 import {
     Component,
+    DestroyRef,
     effect,
     inject,
     OnInit,
@@ -13,6 +14,7 @@ import { Store } from '@ngrx/store';
 import { TranslateService } from '@ngx-translate/core';
 import {
     EpgRuntimeBridgeService,
+    EpgProgressService,
     EpgService,
 } from '@iptvnator/epg/data-access';
 import {
@@ -34,6 +36,8 @@ import {
 } from '@iptvnator/services';
 import {
     AUTO_UPDATE_PLAYLISTS,
+    ELECTRON_BRIDGE_APP_UPDATE_STATUSES,
+    ElectronBridgeAppUpdateStatus,
     Language,
     Settings,
     STORE_KEY,
@@ -63,6 +67,9 @@ import { syncDocumentLanguage } from './services/document-language';
 })
 export class AppComponent implements OnInit {
     readonly routeReady = signal(false);
+    readonly epgProgress = inject(EpgProgressService);
+    readonly mountUpdatePanel = signal(false);
+    private readonly destroyRef = inject(DestroyRef);
     private actions$ = inject(Actions);
     private dataService = inject(DataService);
     private readonly dateLocales = inject(AppDateLocaleService);
@@ -91,6 +98,27 @@ export class AppComponent implements OnInit {
 
     constructor() {
         syncDocumentLanguage();
+
+        // An update only needs its UI chunk once a notification exists.
+        // Subscribe before the first navigation so late status events are not lost.
+        const bridge = window.electron;
+        if (bridge?.getAppUpdateStatus) {
+            const onUpdateStatus = (status: ElectronBridgeAppUpdateStatus | null) => {
+                if (
+                    status?.latestVersion &&
+                    (status.status === ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Available ||
+                        status.status === ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloading ||
+                        status.status === ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloaded)
+                ) {
+                    this.mountUpdatePanel.set(true);
+                }
+            };
+            const unsubscribe = bridge.onAppUpdateStatusChange?.(onUpdateStatus);
+            if (unsubscribe) {
+                this.destroyRef.onDestroy(unsubscribe);
+            }
+            void bridge.getAppUpdateStatus().then(onUpdateStatus).catch(() => undefined);
+        }
 
         // Body-level class (like 'dark-theme') so layout adjustments also
         // reach content rendered outside app-root, e.g. cdk-overlay content.
