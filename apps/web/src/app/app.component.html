@@ -1,4 +1,4 @@
-<app-startup-status #startup [ready]="ready()" />
+<app-startup-status #startup [routeReady]="ready()" />
 <div [style.display]="startup.complete() ? 'contents' : 'none'">
     <router-outlet (activate)="ready.set(true)" />
 </div>
