@@ -517,7 +517,10 @@ for (const theme of ['light', 'dark']) {
         // The recent row can be re-rendered as playback history arrives.
         // Keyboard activation targets the stable button instead of a
         // transient text node and must still retain viewport focus.
-        await recent.locator('button.channel-content').first().press('Enter');
+        const recentChannel = recent.locator('button.channel-content').first();
+        await expect(recentChannel).toBeVisible();
+        await recentChannel.focus();
+        await page.keyboard.press('Enter');
         await expect(recent).toBeFocused();
     });
 }
