@@ -71,29 +71,26 @@ export class AppComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
     private actions$ = inject(Actions);
     private dataService = inject(DataService);
-    private readonly dateLocales = inject(AppDateLocaleService);
+    private readonly locales = inject(AppDateLocaleService);
     private epgBridge = inject(EpgRuntimeBridgeService);
     private epgService = inject(EpgService);
-    private readonly epgAutoRefresh = inject(EpgAutoRefreshService);
+    private readonly epgRefresh = inject(EpgAutoRefreshService);
     private snackBar = inject(LazySnackBar);
     private router = inject(Router);
     private store = inject(Store);
     private translate = inject(TranslateService);
-    private settingsService = inject(SettingsService);
+    private settingsSvc = inject(SettingsService);
     private settingsStore = inject(SettingsStore);
-    private readonly epgSources = inject(EpgSourceSettingsService);
-    private playbackKeepAwake = inject(PlaybackKeepAwakeService);
-    private readonly parentalLock = inject(ParentalLockService);
-    private readonly parentalLockEnforcement = inject(
+    private readonly sources = inject(EpgSourceSettingsService);
+    private keepAwake = inject(PlaybackKeepAwakeService);
+    private readonly lock = inject(ParentalLockService);
+    private readonly lockGuard = inject(
         ParentalLockEnforcementService
     );
-    private playlistOpenRequests = inject(PlaylistOpenRequestService);
+    private openRequests = inject(PlaylistOpenRequestService);
     readonly runtime = inject(RuntimeCapabilitiesService);
-    private readonly workspaceShellActions = inject(WORKSPACE_SHELL_ACTIONS);
-    private readonly contextDrawer = inject(WorkspaceShellContextDrawerService);
-
-    /** Default language as fallback */
-    private readonly DEFAULT_LANG = Language.ENGLISH;
+    private readonly shellActions = inject(WORKSPACE_SHELL_ACTIONS);
+    private readonly drawer = inject(WorkspaceShellContextDrawerService);
 
     constructor() {
         syncDocumentLanguage();
@@ -125,16 +122,16 @@ export class AppComponent implements OnInit {
         // association, macOS `open-file`) are resolved in the main process and
         // queued there until the renderer subscribes. Start listening as early
         // as possible so a first-launch file is not delayed behind app init.
-        this.playlistOpenRequests.start();
+        this.openRequests.start();
 
         // Keep the display awake while a built-in player is playing video
         // (Electron powerSaveBlocker / PWA Screen Wake Lock, issue #1095).
-        this.playbackKeepAwake.start();
+        this.keepAwake.start();
 
         // Parental lock: load the PIN hash and lock store, then keep the
         // in-memory catalogs in step with lock/unlock (issue #285).
-        void this.parentalLock.initialize();
-        this.parentalLockEnforcement.start();
+        void this.lock.initialize();
+        this.lockGuard.start();
 
         effect(() => {
             const size = this.settingsStore.coverSize?.() ?? 'medium';
@@ -143,17 +140,14 @@ export class AppComponent implements OnInit {
 
         if (this.runtime.isElectron) {
             document.addEventListener('keydown', (event) => {
-                if (event.ctrlKey || event.metaKey) {
-                    // While the phone context drawer is modal, workspace
-                    // shortcuts must not navigate away behind it — same gate
-                    // as Ctrl/Cmd+F, Ctrl/Cmd+K, and the shortcuts dialog.
-                    if (this.contextDrawer.isOpen()) {
-                        return;
-                    }
-                    if (event.key === 'r') {
-                        event.preventDefault();
-                        this.workspaceShellActions.openGlobalRecent();
-                    }
+                // Do not navigate behind the modal phone context drawer.
+                if (
+                    (event.ctrlKey || event.metaKey) &&
+                    !this.drawer.isOpen() &&
+                    event.key === 'r'
+                ) {
+                    event.preventDefault();
+                    this.shellActions.openGlobalRecent();
                 }
             });
         }
@@ -161,10 +155,10 @@ export class AppComponent implements OnInit {
 
     ngOnInit() {
         this.store.dispatch(PlaylistActions.loadPlaylists());
-        this.translate.setDefaultLang(this.DEFAULT_LANG);
+        this.translate.setDefaultLang(Language.ENGLISH);
 
         this.initSettings();
-        this.epgAutoRefresh.start();
+        this.epgRefresh.start();
         this.triggerAutoUpdatePlaylists();
     }
 
@@ -173,7 +167,7 @@ export class AppComponent implements OnInit {
      * application based on them
      */
     initSettings(): void {
-        this.settingsService
+        this.settingsSvc
             .getValueFromLocalStorage<Settings>(STORE_KEY.Settings)
             .subscribe((settings: Settings) => {
                 if (settings && Object.keys(settings).length > 0) {
@@ -181,10 +175,10 @@ export class AppComponent implements OnInit {
                     // Settings are stored in IndexedDB and loaded by the settings store
                     // Only specific Electron settings (MPV/VLC paths) are sent when changed in settings component
 
-                    const resolvedLang = settings.language ?? this.DEFAULT_LANG;
+                    const resolvedLang = settings.language ?? Language.ENGLISH;
                     // The switch re-renders every date with the new locale;
                     // its data is a lazy chunk that must be registered first.
-                    void this.dateLocales.use(resolvedLang);
+                    void this.locales.use(resolvedLang);
                     // Mirror the active language to localStorage so the next
                     // cold start can read it synchronously in app.config.ts's
                     // getInitialLanguage() and avoid the English-then-localized
@@ -201,7 +195,7 @@ export class AppComponent implements OnInit {
                     // Fetch EPG if URLs are configured (only fetch stale data)
                     if (
                         this.epgBridge.supportsImport &&
-                        settings.epgAutoRefresh !== false &&
+                        settings.epgRefresh !== false &&
                         settings.epgRefreshOnStartup !== true &&
                         settings.epgUrl?.some((u) => u !== '')
                     ) {
@@ -209,7 +203,7 @@ export class AppComponent implements OnInit {
                     }
 
                     if (settings.theme) {
-                        this.settingsService.changeTheme(settings.theme);
+                        this.settingsSvc.changeTheme(settings.theme);
                     } else {
                         this.detectDarkMode();
                     }
@@ -223,7 +217,7 @@ export class AppComponent implements OnInit {
      * Applies the operating system color scheme when no explicit theme is set
      */
     detectDarkMode(): void {
-        this.settingsService.changeTheme(Theme.SystemTheme);
+        this.settingsSvc.changeTheme(Theme.SystemTheme);
     }
 
     /**
@@ -240,11 +234,11 @@ export class AppComponent implements OnInit {
      */
     private async fetchStaleEpgData(urls: string[]): Promise<void> {
         await this.settingsStore.loadSettings();
-        const revision = this.epgSources.revision();
+        const revision = this.sources.revision();
         const fetchCurrentSources = async (sources: string[]) => {
-            await this.epgSources.waitForReconciliation();
+            await this.sources.waitForReconciliation();
             this.epgService.fetchEpg(
-                this.epgSources.retainCurrentSources(sources, revision)
+                this.sources.retainCurrentSources(sources, revision)
             );
         };
         if (!this.epgBridge.supportsSourceFreshness) {
@@ -255,12 +249,8 @@ export class AppComponent implements OnInit {
         try {
             const result = await this.epgBridge.checkFreshness(urls, 12);
 
-            if (!result) {
-                await fetchCurrentSources(urls);
-                return;
-            }
-
-            if (result.freshUrls.length > 0 && result.staleUrls.length === 0) {
+            const staleUrls = result?.staleUrls ?? urls;
+            if (result?.freshUrls.length && !staleUrls.length) {
                 void this.snackBar.open(
                     this.translate.instant('EPG.UP_TO_DATE'),
                     this.translate.instant('CLOSE'),
@@ -268,8 +258,8 @@ export class AppComponent implements OnInit {
                 );
             }
 
-            if (result.staleUrls.length > 0) {
-                await fetchCurrentSources(result.staleUrls);
+            if (staleUrls.length) {
+                await fetchCurrentSources(staleUrls);
             }
         } catch (error) {
             console.error('Error checking EPG freshness, fetching all:', error);
