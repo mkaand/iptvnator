@@ -79,7 +79,7 @@ export class AppComponent implements OnInit {
     private router = inject(Router);
     private store = inject(Store);
     private translate = inject(TranslateService);
-    private settingsSvc = inject(SettingsService);
+    private prefs = inject(SettingsService);
     private settingsStore = inject(SettingsStore);
     private readonly sources = inject(EpgSourceSettingsService);
     private keepAwake = inject(PlaybackKeepAwakeService);
@@ -167,7 +167,7 @@ export class AppComponent implements OnInit {
      * application based on them
      */
     initSettings(): void {
-        this.settingsSvc
+        this.prefs
             .getValueFromLocalStorage<Settings>(STORE_KEY.Settings)
             .subscribe((settings: Settings) => {
                 if (settings && Object.keys(settings).length > 0) {
@@ -203,7 +203,7 @@ export class AppComponent implements OnInit {
                     }
 
                     if (settings.theme) {
-                        this.settingsSvc.changeTheme(settings.theme);
+                        this.prefs.changeTheme(settings.theme);
                     } else {
                         this.detectDarkMode();
                     }
@@ -217,7 +217,7 @@ export class AppComponent implements OnInit {
      * Applies the operating system color scheme when no explicit theme is set
      */
     detectDarkMode(): void {
-        this.settingsSvc.changeTheme(Theme.SystemTheme);
+        this.prefs.changeTheme(Theme.SystemTheme);
     }
 
     /**
