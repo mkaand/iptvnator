@@ -9,8 +9,9 @@
     }
 }
 
-<!-- Background panels are not needed for the first content card. -->
-@defer (on timer(2500ms)) {
+<!-- Mount background status listeners at browser idle instead of waiting a fixed
+     2.5 seconds: short EPG imports must not finish before their panel exists. -->
+@defer (on idle) {
     <app-epg-progress-panel />
     <app-update-notification-panel />
 }
