@@ -76,7 +76,7 @@ export const playlistReducers = [
                         _id: action.playlistId,
                         // The refresh action can carry a stale display name
                         // while a metadata edit has already reached NgRx.
-                        title: currentPlaylist?.title ?? action.playlist.title,
+                        title: currentPlaylist?.title,
                         updateDate: Date.now(),
                         count: action.playlist.playlist.items.length,
                         userAgent:
