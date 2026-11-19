@@ -26,7 +26,7 @@ import { EpgProgressPanelComponent } from '@iptvnator/ui/epg/progress-panel';
 // library (channel lists, EPG, forms, date-fns) on the initial path.
 import { WindowControlsComponent } from '@iptvnator/ui/components/window-controls';
 import { PlaylistActions, selectAllPlaylistsMeta } from '@iptvnator/m3u-state';
-import { filter, take } from 'rxjs';
+import { take } from 'rxjs';
 import {
     DataService,
     ParentalLockService,
@@ -102,21 +102,17 @@ export class AppComponent implements OnInit {
         // Subscribe before the first navigation so late status events are not lost.
         const bridge = window.electron;
         if (bridge?.getAppUpdateStatus) {
-            const onUpdateStatus = (status: ElectronBridgeAppUpdateStatus | null) => {
+            const onUpdateStatus = (status: ElectronBridgeAppUpdateStatus) => {
                 if (
-                    status?.latestVersion &&
+                    status.latestVersion &&
                     (status.status === 'available' ||
-                        status.status === 'downloading' ||
-                        status.status === 'downloaded')
+                        status.status.startsWith('download'))
                 ) {
                     this.mountUpdatePanel.set(true);
                 }
             };
-            const unsubscribe = bridge.onAppUpdateStatusChange?.(onUpdateStatus);
-            if (unsubscribe) {
-                this.destroyRef.onDestroy(unsubscribe);
-            }
-            void bridge.getAppUpdateStatus().then(onUpdateStatus).catch(() => undefined);
+            this.destroyRef.onDestroy(bridge.onAppUpdateStatusChange(onUpdateStatus));
+            void bridge.getAppUpdateStatus().then(onUpdateStatus, () => undefined);
         }
 
         // Body-level class (like 'dark-theme') so layout adjustments also
@@ -207,7 +203,6 @@ export class AppComponent implements OnInit {
                         this.epgBridge.supportsImport &&
                         settings.epgAutoRefresh !== false &&
                         settings.epgRefreshOnStartup !== true &&
-                        settings.epgUrl?.length > 0 &&
                         settings.epgUrl?.some((u) => u !== '')
                     ) {
                         this.fetchStaleEpgData(settings.epgUrl);
@@ -265,15 +260,12 @@ export class AppComponent implements OnInit {
                 return;
             }
 
-            if (result.freshUrls.length > 0) {
-                // Show snackbar if all EPG sources are fresh (no stale URLs)
-                if (result.staleUrls.length === 0) {
-                    void this.snackBar.open(
-                        this.translate.instant('EPG.UP_TO_DATE'),
-                        this.translate.instant('CLOSE'),
-                        { duration: 3000 }
-                    );
-                }
+            if (result.freshUrls.length > 0 && result.staleUrls.length === 0) {
+                void this.snackBar.open(
+                    this.translate.instant('EPG.UP_TO_DATE'),
+                    this.translate.instant('CLOSE'),
+                    { duration: 3000 }
+                );
             }
 
             if (result.staleUrls.length > 0) {
@@ -300,10 +292,7 @@ export class AppComponent implements OnInit {
                 // Get all playlists from store
                 this.store
                     .select(selectAllPlaylistsMeta)
-                    .pipe(
-                        take(1),
-                        filter((playlists) => playlists.length > 0)
-                    )
+                    .pipe(take(1))
                     .subscribe((playlists) => {
                         // Filter playlists with autoRefresh enabled
                         const playlistsToUpdate = playlists.filter(
