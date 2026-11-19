@@ -65,31 +65,31 @@ import { syncDocumentLanguage } from './services/document-language';
     ],
 })
 export class AppComponent implements OnInit {
-    readonly routeReady = signal(false);
-    readonly epgProgress = inject(EpgProgressService);
-    readonly mountUpdatePanel = signal<ElectronBridgeAppUpdateStatus | null>(null);
+    readonly ready = signal(false);
+    readonly progress = inject(EpgProgressService);
+    readonly updateNotice = signal<ElectronBridgeAppUpdateStatus | null>(null);
     private readonly destroyRef = inject(DestroyRef);
     private actions$ = inject(Actions);
     private dataService = inject(DataService);
     private readonly locales = inject(AppDateLocaleService);
-    private epgBridge = inject(EpgRuntimeBridgeService);
-    private epgService = inject(EpgService);
+    private bridge = inject(EpgRuntimeBridgeService);
+    private epg = inject(EpgService);
     private readonly epgRefresh = inject(EpgAutoRefreshService);
     private snackBar = inject(LazySnackBar);
     private router = inject(Router);
     private store = inject(Store);
     private translate = inject(TranslateService);
     private prefs = inject(SettingsService);
-    private settingsStore = inject(SettingsStore);
+    private stored = inject(SettingsStore);
     private readonly sources = inject(EpgSourceSettingsService);
     private keepAwake = inject(PlaybackKeepAwakeService);
     private readonly lock = inject(ParentalLockService);
     private readonly lockGuard = inject(
         ParentalLockEnforcementService
     );
-    private openRequests = inject(PlaylistOpenRequestService);
+    private openFiles = inject(PlaylistOpenRequestService);
     readonly runtime = inject(RuntimeCapabilitiesService);
-    private readonly shellActions = inject(WORKSPACE_SHELL_ACTIONS);
+    private readonly shell = inject(WORKSPACE_SHELL_ACTIONS);
     private readonly drawer = inject(WorkspaceShellContextDrawerService);
 
     constructor() {
@@ -105,7 +105,7 @@ export class AppComponent implements OnInit {
                     (status.status === 'available' ||
                         status.status.startsWith('download'))
                 ) {
-                    this.mountUpdatePanel.set(status);
+                    this.updateNotice.set(status);
                 }
             };
             this.destroyRef.onDestroy(bridge.onAppUpdateStatusChange(onUpdateStatus));
@@ -122,7 +122,7 @@ export class AppComponent implements OnInit {
         // association, macOS `open-file`) are resolved in the main process and
         // queued there until the renderer subscribes. Start listening as early
         // as possible so a first-launch file is not delayed behind app init.
-        this.openRequests.start();
+        this.openFiles.start();
 
         // Keep the display awake while a built-in player is playing video
         // (Electron powerSaveBlocker / PWA Screen Wake Lock, issue #1095).
@@ -134,7 +134,7 @@ export class AppComponent implements OnInit {
         this.lockGuard.start();
 
         effect(() => {
-            const size = this.settingsStore.coverSize?.() ?? 'medium';
+            const size = this.stored.coverSize?.() ?? 'medium';
             document.documentElement.dataset.coverSize = size;
         });
 
@@ -147,7 +147,7 @@ export class AppComponent implements OnInit {
                     event.key === 'r'
                 ) {
                     event.preventDefault();
-                    this.shellActions.openGlobalRecent();
+                    this.shell.openGlobalRecent();
                 }
             });
         }
@@ -159,7 +159,7 @@ export class AppComponent implements OnInit {
 
         this.initSettings();
         this.epgRefresh.start();
-        this.triggerAutoUpdatePlaylists();
+        this.autoUpdatePlaylists();
     }
 
     /**
@@ -194,7 +194,7 @@ export class AppComponent implements OnInit {
 
                     // Fetch EPG if URLs are configured (only fetch stale data)
                     if (
-                        this.epgBridge.supportsImport &&
+                        this.bridge.supportsImport &&
                         settings.epgAutoRefresh !== false &&
                         settings.epgRefreshOnStartup !== true &&
                         settings.epgUrl?.some((u) => u !== '')
@@ -233,21 +233,21 @@ export class AppComponent implements OnInit {
      * Data is considered fresh if updated within the last 12 hours.
      */
     private async fetchStaleEpgData(urls: string[]): Promise<void> {
-        await this.settingsStore.loadSettings();
+        await this.stored.loadSettings();
         const revision = this.sources.revision();
         const fetchCurrentSources = async (sources: string[]) => {
             await this.sources.waitForReconciliation();
-            this.epgService.fetchEpg(
+            this.epg.fetchEpg(
                 this.sources.retainCurrentSources(sources, revision)
             );
         };
-        if (!this.epgBridge.supportsSourceFreshness) {
+        if (!this.bridge.supportsSourceFreshness) {
             await fetchCurrentSources(urls);
             return;
         }
 
         try {
-            const result = await this.epgBridge.checkFreshness(urls, 12);
+            const result = await this.bridge.checkFreshness(urls, 12);
 
             const staleUrls = result?.staleUrls ?? urls;
             if (result?.freshUrls.length && !staleUrls.length) {
@@ -271,7 +271,7 @@ export class AppComponent implements OnInit {
     /**
      * Triggers auto-update for playlists that have autoRefresh enabled
      */
-    private triggerAutoUpdatePlaylists(): void {
+    private autoUpdatePlaylists(): void {
         // Wait for playlists to be loaded successfully
         this.actions$
             .pipe(
