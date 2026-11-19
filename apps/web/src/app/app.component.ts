@@ -36,7 +36,6 @@ import {
 } from '@iptvnator/services';
 import {
     AUTO_UPDATE_PLAYLISTS,
-    ELECTRON_BRIDGE_APP_UPDATE_STATUSES,
     ElectronBridgeAppUpdateStatus,
     Language,
     Settings,
@@ -106,9 +105,9 @@ export class AppComponent implements OnInit {
             const onUpdateStatus = (status: ElectronBridgeAppUpdateStatus | null) => {
                 if (
                     status?.latestVersion &&
-                    (status.status === ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Available ||
-                        status.status === ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloading ||
-                        status.status === ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloaded)
+                    (status.status === 'available' ||
+                        status.status === 'downloading' ||
+                        status.status === 'downloaded')
                 ) {
                     this.mountUpdatePanel.set(true);
                 }
