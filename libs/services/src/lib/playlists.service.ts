@@ -687,10 +687,11 @@ export class PlaylistsService {
                       recentlyViewed: currentPlaylist.recentlyViewed,
                       m3uContentOverrides: currentPlaylist.m3uContentOverrides,
                       position: currentPlaylist.position,
-                      // An in-flight refresh may complete after the user
-                      // renamed this source; its old snapshot must not
-                      // overwrite the metadata saved on the current row.
-                      title: currentPlaylist.title,
+                      // Xtream names are user-owned; a stale portal refresh
+                      // must not overwrite a name just saved by the user.
+                      ...(currentPlaylist.serverUrl
+                          ? { title: currentPlaylist.title }
+                          : {}),
                   }
                 : {}),
             epgUrls: epgSourceState.epgUrls,

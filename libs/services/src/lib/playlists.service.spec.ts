@@ -2263,10 +2263,42 @@ describe('PlaylistsService', () => {
             DbStores.Playlists,
             expect.objectContaining({
                 _id: 'playlist-2',
-                title: 'Playlist Two',
+                title: 'Stale title before user edit',
                 hiddenGroupTitles: ['Radio-de'],
                 count: 0,
             })
+        );
+    });
+
+    it('retains a user-renamed Xtream source when stale refresh data arrives', async () => {
+        const saved = {
+            _id: 'xtream-renamed',
+            title: 'Edited Xtream Portal',
+            serverUrl: 'https://mock.example.com',
+            username: 'demo',
+            password: 'fictional',
+            count: 0,
+            autoRefresh: false,
+        } as Playlist;
+        const dbService = {
+            getAll: jest.fn(() => of([])),
+            getByID: jest.fn(() => of(saved)),
+            update: jest.fn((_storeName: string, playlist: Playlist) =>
+                of(playlist)
+            ),
+        };
+        testWindow.electron = undefined;
+        const service = createService(dbService);
+        await firstValueFrom(
+            service.updatePlaylist(saved._id, {
+                ...saved,
+                title: 'Old Xtream Portal',
+                playlist: { items: [] },
+            } as Playlist)
+        );
+        expect(dbService.update).toHaveBeenCalledWith(
+            DbStores.Playlists,
+            expect.objectContaining({ title: 'Edited Xtream Portal' })
         );
     });
 

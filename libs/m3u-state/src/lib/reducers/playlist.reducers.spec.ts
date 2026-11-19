@@ -230,6 +230,8 @@ describe('playlistReducers', () => {
             count: 1,
             importDate: '2026-03-28T00:00:00.000Z',
             title: 'Playlist One',
+            serverUrl: 'https://mock.example.com',
+            username: 'demo',
         } as PlaylistMeta;
         const refreshedPlaylist = {
             title: 'Stale title before user edit',

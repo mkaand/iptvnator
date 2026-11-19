@@ -74,9 +74,10 @@ export const playlistReducers = [
                     changes: {
                         ...action.playlist,
                         _id: action.playlistId,
-                        // The refresh action can carry a stale display name
-                        // while a metadata edit has already reached NgRx.
-                        title: currentPlaylist?.title,
+                        // A pending Xtream refresh cannot undo a user rename.
+                        ...(currentPlaylist?.serverUrl && {
+                            title: currentPlaylist.title,
+                        }),
                         updateDate: Date.now(),
                         count: action.playlist.playlist.items.length,
                         userAgent:
