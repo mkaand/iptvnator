@@ -124,7 +124,10 @@ export class WebPlayerRecoveryController {
         }
         if (!issue) {
             recoverySession.settle(binding);
-            this.cancelAutoRetry();
+            // Each engine remount clears its old issue before loading media.
+            // This is not proof that playback resumed: resetting the counter
+            // here would turn repeated HTTP 403s into an endless Retry 1/5.
+            // A real playbackStarted() or a changed session cancels retries.
             this.clearDiagnostic();
             return;
         }

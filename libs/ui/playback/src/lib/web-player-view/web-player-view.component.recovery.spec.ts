@@ -191,6 +191,17 @@ describe('WebPlayerViewComponent recovery integration', () => {
         expect(component.visiblePlaybackDiagnostic()).toBeNull();
         expect(fixture.nativeElement.querySelector('.web-player-auto-retry')?.textContent)
             .toContain('1/5');
+
+        // A new engine emits null on initialization before it is playable.
+        // That must not reset a pending retry budget for the same live source.
+        vjs().playbackIssue.emit(null);
+        fixture.detectChanges();
+        expect(component.autoRetryAttempt()).toBe(1);
+
+        // Confirmed playback, unlike an issue-clear event, resets the budget.
+        vjs().playbackStarted.emit();
+        fixture.detectChanges();
+        expect(component.autoRetryAttempt()).toBe(0);
     });
 
     it('ranks HTML5, MPV, then VLC for a fatal Video.js HLS media failure', async () => {

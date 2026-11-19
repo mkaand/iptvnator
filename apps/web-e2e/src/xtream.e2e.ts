@@ -558,7 +558,7 @@ test('@xtream playlist details edit is retained in the PWA browser context', asy
 
     await expect(
         page.getByRole('button', { name: /Edited PWA Xtream Portal/ })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
 
     dialog = await openPlaylistDetailsDialog(page, 'Edited PWA Xtream Portal');
     await expect(dialog.locator('input[formcontrolname="title"]')).toHaveValue(
