@@ -130,8 +130,9 @@ async function importPlaylist(
             .getByRole('button', { name: 'Add playlist', exact: true })
             .click(),
     ]);
-    // The landing is Live; explicitly open All for full-catalog assertions.
-    await page.goto(page.url().replace(/\/live$/, '/all'));
+    // The landing is Live; select All via the workspace navigation so
+    // its history/context are preserved for detail and focus assertions.
+    await page.getByRole('link', { name: 'All channels', exact: true }).click();
     await expect(page.getByText(`${count} channels`)).toBeVisible();
 }
 
@@ -513,7 +514,10 @@ for (const theme of ['light', 'dark']) {
         const recent = page.locator(
             'app-global-favorites-list [appChannelScrollFocus]'
         );
-        await recent.locator('.channel-name').first().click();
+        // The recent row can be re-rendered as playback history arrives.
+        // Keyboard activation targets the stable button instead of a
+        // transient text node and must still retain viewport focus.
+        await recent.locator('button.channel-content').first().press('Enter');
         await expect(recent).toBeFocused();
     });
 }

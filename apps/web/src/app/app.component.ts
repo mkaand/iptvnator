@@ -67,7 +67,7 @@ import { syncDocumentLanguage } from './services/document-language';
 export class AppComponent implements OnInit {
     readonly routeReady = signal(false);
     readonly epgProgress = inject(EpgProgressService);
-    readonly mountUpdatePanel = signal(false);
+    readonly mountUpdatePanel = signal<ElectronBridgeAppUpdateStatus | null>(null);
     private readonly destroyRef = inject(DestroyRef);
     private actions$ = inject(Actions);
     private dataService = inject(DataService);
@@ -105,7 +105,7 @@ export class AppComponent implements OnInit {
                     (status.status === 'available' ||
                         status.status.startsWith('download'))
                 ) {
-                    this.mountUpdatePanel.set(true);
+                    this.mountUpdatePanel.set(status);
                 }
             };
             this.destroyRef.onDestroy(bridge.onAppUpdateStatusChange(onUpdateStatus));

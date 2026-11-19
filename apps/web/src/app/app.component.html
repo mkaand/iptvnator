@@ -13,5 +13,5 @@
      before rendering and keep short EPG imports and update notices visible. -->
 @defer (when epgProgress.isVisible() || mountUpdatePanel()) {
     <app-epg-progress-panel />
-    <app-update-notification-panel />
+    <app-update-notification-panel [initialStatus]="mountUpdatePanel()" />
 }

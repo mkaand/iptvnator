@@ -80,9 +80,18 @@ test.describe('Skeleton geometry', () => {
             await importM3uPlaylistFromNativeDialog(app, m3uFixturePath);
             await goToDashboard(page);
 
-            // All channels, the default view.
+            // The dashboard card defaults to Live TV. Enter the All
+            // catalog explicitly, otherwise an M3U with no live entries
+            // leaves an empty Live TV list after the loading skeleton.
+            const card = page
+                .getByTestId('dashboard-recent-sources-rail-card-link')
+                .first();
+            const href = await card.getAttribute('href');
+            expect(href).toContain('/workspace/playlists/');
+            const target = new URL(href!, page.url());
+            target.pathname = target.pathname.replace(/\/(live|all)$/, '') + '/all';
             let hold = await holdIpcChannel(app, playlistChannel);
-            await openM3uFromDashboard(page);
+            await page.goto(target.toString());
             await hold.waitUntilHeld();
             await expect(
                 page.locator(`${loadingState} .channels-loading-header`)

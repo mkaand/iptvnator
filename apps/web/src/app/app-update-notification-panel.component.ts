@@ -4,6 +4,7 @@ import {
     computed,
     OnDestroy,
     OnInit,
+    Input,
     signal,
 } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -46,6 +47,7 @@ import { AppUpdateNotificationCardComponent } from './app-update-notification-ca
 export class AppUpdateNotificationPanelComponent implements OnInit, OnDestroy {
     private static readonly dismissalPrefix =
         'iptvnator-app-update-dismissed-v1:mkaand/iptvnator';
+    @Input() initialStatus: ElectronBridgeAppUpdateStatus | null = null;
     private unsubscribeStatus: (() => void) | null = null;
 
     readonly status = signal<ElectronBridgeAppUpdateStatus | null>(null);
@@ -76,6 +78,9 @@ export class AppUpdateNotificationPanelComponent implements OnInit, OnDestroy {
     );
 
     ngOnInit(): void {
+        if (this.initialStatus) {
+            this.status.set(this.initialStatus);
+        }
         if (!window.electron?.getAppUpdateStatus) {
             return;
         }
@@ -86,7 +91,9 @@ export class AppUpdateNotificationPanelComponent implements OnInit, OnDestroy {
             }) ?? null;
 
         void window.electron.getAppUpdateStatus().then((status) => {
-            this.status.set(status);
+            // The event that triggered deferred mounting is newer than this
+            // initial main-process snapshot; never replace it with stale data.
+            if (!this.initialStatus) this.status.set(status);
         });
     }
 
