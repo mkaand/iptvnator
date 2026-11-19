@@ -195,7 +195,7 @@ export class AppComponent implements OnInit {
                     // Fetch EPG if URLs are configured (only fetch stale data)
                     if (
                         this.epgBridge.supportsImport &&
-                        settings.epgRefresh !== false &&
+                        settings.epgAutoRefresh !== false &&
                         settings.epgRefreshOnStartup !== true &&
                         settings.epgUrl?.some((u) => u !== '')
                     ) {
