@@ -23,6 +23,7 @@ import {
     saveSettings,
     setSwitch,
     test,
+    waitForM3uCatalog,
     waitForXtreamWorkspaceReady,
 } from './electron-test-fixtures';
 import {
@@ -105,6 +106,7 @@ test.describe('Electron Settings', () => {
             await goToDashboard(app.mainWindow);
             await importM3uPlaylistFromNativeDialog(app, m3uFixturePath);
             await app.mainWindow.waitForURL(/\/workspace\/playlists\/.+/);
+            await waitForM3uCatalog(app.mainWindow);
 
             const firstChannel = channelItemByTitle(
                 app.mainWindow,
@@ -342,6 +344,7 @@ test.describe('Electron Settings', () => {
             await goToDashboard(app.mainWindow);
             await importM3uPlaylistFromNativeDialog(app, m3uFixturePath);
             await app.mainWindow.waitForURL(/\/workspace\/playlists\/.+/);
+            await waitForM3uCatalog(app.mainWindow);
             await app.mainWindow.route(
                 'https://example.channels/path-to-file/1.m3u8',
                 () => {

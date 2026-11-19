@@ -7,6 +7,7 @@ import {
     goToDashboard,
     importM3uPlaylistFromNativeDialog,
     launchElectronApp,
+    waitForM3uCatalog,
     test,
 } from './electron-test-fixtures';
 import { expectOverlayContrastOnWhite } from './theme-contrast';
@@ -45,6 +46,7 @@ test('@playback @electron stream info popover reports the playing stream', async
         await goToDashboard(page);
         await importM3uPlaylistFromNativeDialog(app, playlistPath);
         await page.waitForURL(/\/workspace\/playlists\/.+/);
+        await waitForM3uCatalog(page);
         await channelItemByTitle(page, 'Positive News TV').first().click();
 
         const video = page.locator('app-web-player-view video');
