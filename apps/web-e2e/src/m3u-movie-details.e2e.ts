@@ -511,16 +511,16 @@ for (const theme of ['light', 'dark']) {
             .getByRole('link', { name: 'Recently viewed', exact: true })
             .first()
             .click();
-        const recent = page.locator(
-            'app-global-favorites-list [appChannelScrollFocus]'
-        );
-        // The recent row can be re-rendered as playback history arrives.
-        // Keyboard activation targets the stable button instead of a
-        // transient text node and must still retain viewport focus.
-        const recentChannel = recent.locator('button.channel-content').first();
-        await expect(recentChannel).toBeVisible();
-        await recentChannel.focus();
+        // Recently viewed is a card collection, not the old favorites
+        // scroll list. Exercise keyboard activation on its actual card.
+        const recentCard = page.getByRole('button', {
+            name: 'Station 2',
+            exact: true,
+        });
+        await expect(recentCard).toBeVisible();
+        await recentCard.focus();
+        await expect(recentCard).toBeFocused();
         await page.keyboard.press('Enter');
-        await expect(recent).toBeFocused();
+        await expect(page.locator('app-web-player-view video').first()).toBeVisible();
     });
 }

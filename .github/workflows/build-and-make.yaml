@@ -1763,6 +1763,48 @@ jobs:
                       '{tag_name: $tag, name: $name, target_commitish: $commitish, body: ($body | .[0:120000])}' |
                       gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" --input - > /dev/null
 
+
+            # Stable releases for our fork are published only AFTER the
+            # complete, uploaded 27-asset set (including updater feeds) exists.
+            # Any failure leaves an inspectable draft, never a partial release.
+            - name: Verify and publish v0.30.2 stable release
+              if: github.repository == 'mkaand/iptvnator' && github.ref == 'refs/tags/v0.30.2' && steps.draft-release.outputs.id != ''
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RELEASE_ID: ${{ steps.draft-release.outputs.id }}
+              run: |
+                  set -euo pipefail
+                  test "$(node -p 'require("./package.json").version')" = '0.30.2'
+
+                  RELEASE="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+                  if jq -e '.draft == false and .prerelease == false and .tag_name == "v0.30.2"' <<< "${RELEASE}" > /dev/null; then
+                      echo "v0.30.2 already public; no changes."
+                      exit 0
+                  fi
+                  jq -e '.draft == true and .prerelease == false and .tag_name == "v0.30.2"' <<< "${RELEASE}" > /dev/null
+
+                  ASSETS="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100")"
+                  COUNT="$(jq 'length' <<< "${ASSETS}")"
+                  if [ "${COUNT}" != '27' ] || ! jq -e 'all(.[]; .state == "uploaded" and .size > 0)' <<< "${ASSETS}" > /dev/null; then
+                      echo "::error::Stable draft assets incomplete: found ${COUNT} instead of 27 nonempty uploads."
+                      exit 1
+                  fi
+                  for metadata in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm.yml latest-linux-arm64.yml; do
+                      if ! jq -e --arg name "${metadata}" 'any(.[]; .name == $name)' <<< "${ASSETS}" > /dev/null; then
+                          echo "::error::Missing updater feed: ${metadata}"
+                          exit 1
+                      fi
+                  done
+                  if ! jq -e 'any(.[]; .name == "iptvnator-0.30.2-windows-x64-setup.exe")' <<< "${ASSETS}" > /dev/null; then
+                      echo "::error::Windows x64 installer missing."
+                      exit 1
+                  fi
+
+                  jq -n '{tag_name:"v0.30.2",draft:false,prerelease:false}' |
+                      gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" --input - --jq '.html_url'
+                  echo "v0.30.2 stable release is public with all 27 assets."
+
             # ── Nightly channel ──────────────────────────────────────────
             # Drafts are invisible to anyone without write access and to
             # electron-updater, so master builds are published as prereleases

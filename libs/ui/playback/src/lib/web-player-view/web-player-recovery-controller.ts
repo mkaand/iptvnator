@@ -200,12 +200,12 @@ export class WebPlayerRecoveryController {
         // Retry the active transport, not the original source.
         const url = this.deps.resolvedPlayback().streamUrl;
         const isHls = /\.m3u8(?:[?#]|$)/i.test(url);
-        const transient = status === 408 || status === 429 ||
-            (status != null && status >= 500);
+        const transient = status === 403 || status === 408 ||
+            status === 429 || (status != null && status >= 500);
         // Explicit .m3u8 URLs retain immediate format/player fallback when
         // the media engine gives no HTTP status (often a codec/decode fault).
-        // 403 is an access denial: don't loop and hide the diagnostic.
-        // Recoverable 408/429/5xx retain capped reconnection attempts.
+        // Temporary 403 and 408/429/5xx retain capped retries for HLS.
+        // The effective MPEG-TS transport is never incorrectly retried as HLS.
         // PHP and extensionless streams keep unknown-status retry.
         const retryableStatus = transient ||
             (status == null && isAmbiguousStreamUrl(url));
@@ -214,7 +214,8 @@ export class WebPlayerRecoveryController {
             !retryableStatus ||
             !(issue.code === PlaybackDiagnosticCode.NetworkError ||
               issue.code === PlaybackDiagnosticCode.MediaDecodeError ||
-              issue.code === PlaybackDiagnosticCode.UnknownPlaybackError) ||
+              issue.code === PlaybackDiagnosticCode.UnknownPlaybackError ||
+              (status === 403 && issue.code === PlaybackDiagnosticCode.BrowserAccessError)) ||
             this.autoRetryAttempt() >= 5) return false;
 
         const attempt = this.autoRetryAttempt() + 1;

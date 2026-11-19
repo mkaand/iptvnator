@@ -557,7 +557,7 @@ test('@xtream playlist details edit is retained in the PWA browser context', asy
     await expect(dialog).toBeHidden();
 
     await expect(
-        page.getByText('Edited PWA Xtream Portal', { exact: false })
+        page.getByRole('button', { name: /Edited PWA Xtream Portal/ })
     ).toBeVisible();
 
     dialog = await openPlaylistDetailsDialog(page, 'Edited PWA Xtream Portal');
