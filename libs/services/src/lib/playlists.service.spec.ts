@@ -2252,6 +2252,7 @@ describe('PlaylistsService', () => {
         await firstValueFrom(
             service.updatePlaylist('playlist-2', {
                 _id: 'playlist-2',
+                title: 'Stale title before user edit',
                 playlist: {
                     items: [],
                 },
@@ -2262,6 +2263,7 @@ describe('PlaylistsService', () => {
             DbStores.Playlists,
             expect.objectContaining({
                 _id: 'playlist-2',
+                title: 'Playlist Two',
                 hiddenGroupTitles: ['Radio-de'],
                 count: 0,
             })

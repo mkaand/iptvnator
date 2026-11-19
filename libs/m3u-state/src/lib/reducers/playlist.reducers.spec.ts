@@ -232,6 +232,7 @@ describe('playlistReducers', () => {
             title: 'Playlist One',
         } as PlaylistMeta;
         const refreshedPlaylist = {
+            title: 'Stale title before user edit',
             playlist: {
                 items: [refreshedChannel],
             },
@@ -255,6 +256,9 @@ describe('playlistReducers', () => {
 
         expect(nextState.channels).toEqual([refreshedChannel]);
         expect(nextState.channelsLoading).toBe(false);
+        expect(nextState.playlists.entities['playlist-1']?.title).toBe(
+            'Playlist One'
+        );
     });
 
     it.each([undefined, '', 'Replacement/2.0'])(
