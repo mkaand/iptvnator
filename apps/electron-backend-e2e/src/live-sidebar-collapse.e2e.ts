@@ -270,7 +270,9 @@ test.describe('Live channel rail collapse (#1458)', () => {
             ).toBeVisible();
 
             await importM3uPlaylistFromNativeDialog(app, secondPath);
-            await app.mainWindow.waitForURL(/\/workspace\/playlists\/.+\/all$/);
+            // Import can leave the previous source selected. Switch to the
+            // new source explicitly and verify its persisted rail preference.
+            await reopenPlaylist(app.mainWindow, secondTitle);
             await expectRailCollapsed(app.mainWindow);
 
             // Ctrl/Cmd+B still works and is reflected by the header toggle.

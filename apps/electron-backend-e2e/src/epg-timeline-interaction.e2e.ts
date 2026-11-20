@@ -543,10 +543,14 @@ test('@epg @xtream @electron reaches programmes beyond the rendered range with T
         // Walk well past the rendered range in both directions: ten
         // programmes that were not in the DOM when the walk started.
         for (const key of ['Tab', 'Shift+Tab']) {
-            // The previous walk moved the window away from now.
-            await timeline.locator('.epg-timeline__jump').click();
-            await expect(nowBlock).toBeVisible();
-            await nowBlock.focus();
+            // Start forward from Now; then walk back from the distant block
+            // reached by Tab. Shift+Tab from the first Now entry can
+            // legitimately leave the ribbon because there is no prior slot.
+            if (key === 'Tab') {
+                await timeline.locator('.epg-timeline__jump').click();
+                await expect(nowBlock).toBeVisible();
+                await nowBlock.focus();
+            }
             const reached = new Set<string>();
             for (let press = 0; press < 400 && reached.size < 10; press++) {
                 await app.mainWindow.keyboard.press(key);

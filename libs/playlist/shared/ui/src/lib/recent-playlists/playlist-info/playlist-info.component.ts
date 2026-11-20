@@ -474,6 +474,17 @@ export class PlaylistInfoComponent {
             if (isXtream && this.runtime.supportsXtreamSqliteDataSource) {
                 await this.updateXtreamPlaylist(normalizedPlaylist);
             }
+            // Browser Xtream metadata is stored asynchronously by the NgRx
+            // effect. A portal import can race that effect and overwrite an
+            // edit after the dialog has already announced success. Serialize
+            // the save against pending playlist writes before updating the UI.
+            const browserXtreamEdit =
+                isXtream && !this.runtime.supportsXtreamSqliteDataSource;
+            if (browserXtreamEdit) {
+                await firstValueFrom(
+                    this.playlistsService.updatePlaylistMeta(normalizedPlaylist)
+                );
+            }
 
             if (resolvedStalkerConnection) {
                 normalizedPlaylist = preserveCurrentMetadata
@@ -496,7 +507,9 @@ export class PlaylistInfoComponent {
             this.store.dispatch(
                 PlaylistActions.updatePlaylistMeta({
                     playlist: normalizedPlaylist,
-                    ...(resolvedStalkerConnection ? { persist: false } : {}),
+                    ...(resolvedStalkerConnection || browserXtreamEdit
+                        ? { persist: false }
+                        : {}),
                 })
             );
 

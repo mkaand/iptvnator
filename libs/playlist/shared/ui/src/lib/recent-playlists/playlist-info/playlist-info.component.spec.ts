@@ -27,6 +27,7 @@ describe('PlaylistInfoComponent', () => {
     let playlistsService: {
         getPlaylistById: jest.Mock;
         getRawPlaylistById: jest.Mock;
+        updatePlaylistMeta: jest.Mock;
     };
     let databaseService: {
         updateXtreamPlaylistDetails: jest.Mock;
@@ -81,6 +82,7 @@ describe('PlaylistInfoComponent', () => {
         playlistsService = {
             getPlaylistById: jest.fn(),
             getRawPlaylistById: jest.fn(() => of('#EXTM3U\n')),
+            updatePlaylistMeta: jest.fn(() => of(playlist)),
         };
         databaseService = {
             updateXtreamPlaylistDetails: jest.fn(),
@@ -229,13 +231,61 @@ describe('PlaylistInfoComponent', () => {
         expect(
             databaseService.updateXtreamPlaylistDetails
         ).not.toHaveBeenCalled();
+        expect(playlistsService.updatePlaylistMeta).toHaveBeenCalledWith(
+            updatedPlaylist
+        );
         expect(store.dispatch).toHaveBeenCalledWith(
-            PlaylistActions.updatePlaylistMeta({ playlist: updatedPlaylist })
+            PlaylistActions.updatePlaylistMeta({
+                playlist: updatedPlaylist,
+                persist: false,
+            })
         );
         expect(snackBar.open).toHaveBeenCalledWith(
             'HOME.PLAYLISTS.PLAYLIST_UPDATE_SUCCESS',
             'CLOSE',
             { duration: 3000 }
+        );
+        expect(dialogRef.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not close or announce a browser Xtream edit before the database write completes', async () => {
+        const xtreamPlaylist = {
+            ...playlist,
+            url: undefined,
+            serverUrl: 'http://old.example:8080',
+            username: 'old-user',
+            password: 'old-pass',
+        } as Playlist & { id: string };
+        TestBed.overrideProvider(MAT_DIALOG_DATA, {
+            useValue: xtreamPlaylist,
+        });
+        const gate = new Subject<Playlist>();
+        playlistsService.updatePlaylistMeta.mockReturnValue(gate);
+        createComponent();
+
+        const updated = {
+            ...metaBase,
+            _id: 'playlist-1',
+            title: 'Edited Browser Portal',
+            serverUrl: 'http://old.example:8080',
+            username: 'minimal',
+            password: 'minimal',
+        };
+        const saving = component.saveChanges(updated);
+        await Promise.resolve();
+        expect(playlistsService.updatePlaylistMeta).toHaveBeenCalled();
+        expect(store.dispatch).not.toHaveBeenCalled();
+        expect(dialogRef.close).not.toHaveBeenCalled();
+        expect(snackBar.open).not.toHaveBeenCalled();
+
+        gate.next(xtreamPlaylist);
+        gate.complete();
+        await saving;
+        expect(store.dispatch).toHaveBeenCalledWith(
+            PlaylistActions.updatePlaylistMeta({
+                playlist: updated,
+                persist: false,
+            })
         );
         expect(dialogRef.close).toHaveBeenCalledTimes(1);
     });
@@ -274,6 +324,14 @@ describe('PlaylistInfoComponent', () => {
                     username: 'new-user',
                     password: 'new-pass',
                 },
+                persist: false,
+            })
+        );
+        expect(playlistsService.updatePlaylistMeta).toHaveBeenCalledWith(
+            expect.objectContaining({
+                title: 'Updated Xtream',
+                username: 'new-user',
+                password: 'new-pass',
             })
         );
     });
