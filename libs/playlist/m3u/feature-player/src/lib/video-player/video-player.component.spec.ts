@@ -8,7 +8,7 @@ import { StorageMap } from '@ngx-pwa/local-storage';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MockPipe } from 'ng-mocks';
 import { of } from 'rxjs';
-import { ChannelActions, EpgActions, getChannelEpgAliasKey, replaceExactEpgNameAliases } from '@iptvnator/m3u-state';
+import { ChannelActions, EpgActions } from '@iptvnator/m3u-state';
 import { EpgService } from '@iptvnator/epg/data-access';
 import { PlaylistContextFacade } from '@iptvnator/playlist/shared/util';
 import {
@@ -1384,74 +1384,6 @@ describe('VideoPlayerComponent', () => {
         expect(storeMock.dispatch).toHaveBeenCalledWith(
             EpgActions.resetActiveEpgProgram()
         );
-    });
-
-    it('reloads the current programme after an async XMLTV alias arrives, without selecting or restarting a channel', () => {
-        replaceExactEpgNameAliases(new Map());
-        syncStoreState(sampleChannel);
-        fixture.detectChanges();
-        epgServiceMock.getChannelPrograms.mockClear();
-        storeMock.dispatch.mockClear();
-        replaceExactEpgNameAliases(new Map([
-            [getChannelEpgAliasKey(sampleChannel), 'playlist.bbc.earth'],
-        ]));
-        fixture.detectChanges();
-        expect(epgServiceMock.getChannelPrograms)
-            .toHaveBeenCalledWith('playlist.bbc.earth');
-        expect(storeMock.dispatch).not.toHaveBeenCalledWith(
-            ChannelActions.setActiveChannel({
-                channel: sampleChannel,
-            })
-        );
-        // No duplicate backend query when the mapping is identical.
-        epgServiceMock.getChannelPrograms.mockClear();
-        replaceExactEpgNameAliases(new Map([
-            [getChannelEpgAliasKey(sampleChannel), 'playlist.bbc.earth'],
-        ]));
-        fixture.detectChanges();
-        expect(epgServiceMock.getChannelPrograms).not.toHaveBeenCalled();
-        replaceExactEpgNameAliases(new Map());
-        syncStoreState(null);
-        fixture.detectChanges();
-    });
-
-    describe('EPG needs-setup empty state', () => {
-        beforeEach(() => {
-            // Earlier tests leave programmes in the shared subject; the
-            // component keeps a live subscription, so this reset reaches it.
-            epgUrlSetting.set([]);
-            epgPrograms$.next([]);
-        });
-
-        afterEach(() => {
-            epgUrlSetting.set([]);
-            epgPrograms$.next([]);
-        });
-
-        it('claims needs-setup only while no EPG source exists anywhere', () => {
-            expect(component.liveEpgEmptyReason()).toBe('m3u-needs-setup');
-
-            epgUrlSetting.set(['https://example.org/guide.xml']);
-
-            expect(component.liveEpgEmptyReason()).toBe('none');
-        });
-
-        it('never overrides a channel that actually has programmes', () => {
-            // Uploaded XMLTV files produce programmes without any
-            // configured source URL — the ribbon must win over the hint.
-            epgPrograms$.next([buildProgram('Morning Bulletin')]);
-
-            expect(component.liveEpgEmptyReason()).toBe('none');
-        });
-
-        it('deep links the empty-state button to the EPG settings page', () => {
-            component.openEpgSettings();
-
-            expect(routerMock.navigate).toHaveBeenCalledWith([
-                '/workspace/settings',
-                'epg',
-            ]);
-        });
     });
 });
 

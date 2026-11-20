@@ -1,6 +1,7 @@
 import { createPlaylistObject } from '@iptvnator/shared/m3u-utils';
 import { parse } from 'iptv-playlist-parser';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import type { CharsetBenchmarkVariant } from './charset-parse-benchmark-report';
 import { SYNTHETIC_TITLE_VOCABULARY } from './synthetic-charset';
@@ -45,10 +46,12 @@ export interface Workload {
 
 export async function createWorkloads(): Promise<Workload[]> {
     const epgModule = (await import(
-        resolve(
-            __dirname,
-            '../../../electron-backend/src/app/workers/epg-streaming-parser.ts'
-        )
+        pathToFileURL(
+            resolve(
+                __dirname,
+                '../../../electron-backend/src/app/workers/epg-streaming-parser.ts'
+            )
+        ).href
     )) as StreamingEpgParserModule;
     const m3uBuffers = buffersPerVariant((charset) =>
         createSyntheticM3uFixture(ENTRY_COUNT, { charset })

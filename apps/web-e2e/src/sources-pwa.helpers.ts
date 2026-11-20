@@ -157,7 +157,7 @@ export async function addM3uUrlPlaylist(
     await expect(addButton).toBeEnabled({ timeout: 10_000 });
     await addButton.click();
     await expect(dialog).toBeHidden();
-    await page.waitForURL(/playlists.*all/);
+    await page.waitForURL(/playlists.*live/);
 }
 
 export async function addStalkerPortal(

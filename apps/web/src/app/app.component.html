@@ -1,12 +1,17 @@
-<app-startup-status #startup [routeReady]="routeReady()" />
+<app-startup-status #startup [routeReady]="ready()" />
 <div [style.display]="startup.complete() ? 'contents' : 'none'">
-    <router-outlet (activate)="routeReady.set(true)" />
+    <router-outlet (activate)="ready.set(true)" />
 </div>
 
-<app-epg-progress-panel />
+@defer (on immediate) {
+    @if (runtime.usesCustomWindowControls) {
+        <app-window-controls />
+    }
+}
 
-<app-update-notification-panel />
-
-@if (usesCustomWindowControls) {
-    <app-window-controls />
+<!-- One deferred mount for background panels; both event listeners start
+     before rendering and keep short EPG imports and update notices visible. -->
+@defer (when progress.isVisible() || updateNotice()) {
+    <app-epg-progress-panel />
+    <app-update-notification-panel [initialStatus]="updateNotice()" />
 }

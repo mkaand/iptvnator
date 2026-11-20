@@ -529,6 +529,11 @@ test('@xtream playlist details edit is retained in the PWA browser context', asy
     page,
 }) => {
     await addXtreamPortal(page, { name: 'Editable PWA Xtream Portal' });
+    // The URL transition precedes portal catalog hydration. Editing before
+    // the initial import settles races its still-pending metadata write.
+    await expect(page.locator('app-grid-list mat-card').first()).toBeVisible({
+        timeout: 20_000,
+    });
 
     let dialog = await openPlaylistDetailsDialog(
         page,
@@ -557,8 +562,8 @@ test('@xtream playlist details edit is retained in the PWA browser context', asy
     await expect(dialog).toBeHidden();
 
     await expect(
-        page.getByText('Edited PWA Xtream Portal', { exact: false })
-    ).toBeVisible();
+        page.getByRole('button', { name: /Edited PWA Xtream Portal/ })
+    ).toBeVisible({ timeout: 15_000 });
 
     dialog = await openPlaylistDetailsDialog(page, 'Edited PWA Xtream Portal');
     await expect(dialog.locator('input[formcontrolname="title"]')).toHaveValue(

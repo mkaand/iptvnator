@@ -106,7 +106,7 @@
     &:hover { border-color: var(--app-selection-color); background: var(--app-card-hover-bg); }
 }
 .series-icon { font-size: 26px; color: var(--app-selection-color); }
-.series-name { font-weight: 650; font-size: 15px; }
+.series-name { font-weight: 600; font-size: 15px; }
 .series-count { font-size: 12px; color: var(--app-eyebrow-color); }
 .back-button, .season-picker button, .catalog-pages button, .unorganized > button {
     border: 1px solid var(--app-widget-border);

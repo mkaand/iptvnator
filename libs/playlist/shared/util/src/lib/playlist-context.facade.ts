@@ -235,11 +235,18 @@ export class PlaylistContextFacade {
         }
 
         if (provider === 'playlists') {
-            const section = this.resolveTargetSection(
-                provider,
-                routeContext.section,
-                playlistId
-            );
+            // Xtream "live" is a portal-only context when switching providers.
+            // Open the complete M3U catalog rather than reusing that route or
+            // a remembered section from a previous M3U visit.
+            const section =
+                routeContext.provider === 'xtreams' &&
+                routeContext.section === 'live'
+                    ? 'all'
+                    : this.resolveTargetSection(
+                          provider,
+                          routeContext.section,
+                          playlistId
+                      );
             return [...prefix, 'playlists', playlistId, section];
         }
 

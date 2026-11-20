@@ -687,6 +687,11 @@ export class PlaylistsService {
                       recentlyViewed: currentPlaylist.recentlyViewed,
                       m3uContentOverrides: currentPlaylist.m3uContentOverrides,
                       position: currentPlaylist.position,
+                      // Xtream names are user-owned; a stale portal refresh
+                      // must not overwrite a name just saved by the user.
+                      ...(currentPlaylist.serverUrl
+                          ? { title: currentPlaylist.title }
+                          : {}),
                   }
                 : {}),
             epgUrls: epgSourceState.epgUrls,

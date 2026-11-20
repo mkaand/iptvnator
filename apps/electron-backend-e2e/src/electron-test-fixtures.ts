@@ -49,7 +49,7 @@ export const packagedRendererIndexPath = join(
 );
 export const m3uFixturePath = join(
     workspaceRoot,
-    'apps/web-e2e/src/fixtures/test.m3u'
+    'apps/electron-backend-e2e/src/fixtures/test.m3u'
 );
 export const stalkerMockPort = process.env['MOCK_PORT'] ?? '3210';
 export const xtreamMockPort = process.env['XTREAM_MOCK_PORT'] ?? '3211';
@@ -1747,6 +1747,7 @@ export async function waitForSourceRowIdle(
 }
 
 export async function waitForM3uCatalog(page: Page): Promise<void> {
+    await page.getByRole('link', { name: 'All channels', exact: true }).click();
     await page.waitForURL(/\/workspace\/playlists\/.+\/all$/);
     await expect(page.getByTestId('channel-item').first()).toBeVisible({
         timeout: 20000,

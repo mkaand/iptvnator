@@ -75,11 +75,13 @@ export async function importPlaylist(page: Page): Promise<string> {
     await dialog.getByRole('radio', { name: /Raw m3u text/i }).click();
     await dialog.getByLabel('Insert m3u(8) playlist as text').fill(PLAYLIST);
     await Promise.all([
-        page.waitForURL(/\/workspace\/playlists\/.+\/all$/),
+        page.waitForURL(/\/workspace\/playlists\/.+\/live$/),
         dialog
             .getByRole('button', { name: 'Add playlist', exact: true })
             .click(),
     ]);
+    // The landing is Live; explicitly open All for full-catalog assertions.
+    await page.goto(page.url().replace(/\/live$/, '/all'));
     await expect(page.getByText('1 channel', { exact: false })).toBeVisible();
     return page.url();
 }

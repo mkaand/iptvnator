@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "Бацькоўскі кантроль выключаны",
             "PIN_CHANGED_TOAST": "PIN зменены",
             "LOCKED_TOAST": "Заблакіравана"
-        }
+        },
+        "EPG_AUTO_REFRESH": "Аўтаматычнае абнаўленне тэлепраграмы",
+        "EPG_AUTO_REFRESH_DESC": "Аўтаматычна абнаўляць наладжаныя крыніцы XMLTV, пакуль праграма працуе.",
+        "EPG_REFRESH_ON_STARTUP": "Абнаўляць тэлепраграму пры запуску",
+        "EPG_REFRESH_ON_STARTUP_DESC": "Прымусова абнаўляць захаваныя крыніцы тэлепраграмы пры запуску IPTVnator.",
+        "EPG_REFRESH_INTERVAL": "Інтэрвал абнаўлення",
+        "EPG_REFRESH_INTERVAL_DESC": "Выберыце адну частату аўтаматычнага абнаўлення.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "Прайграць апошні жывы канал",
+        "APP_UPDATE_NO_RELEASE": "Даступных выпускаў няма",
+        "APP_UPDATE_AUTO_CHECK": "Аўтаматычна правяраць абнаўленні",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "Па змаўчанні выключана. Праверыць уручную можна ў любы момант."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "Не ўдалося захаваць на сервер. Праверце злучэнне і паспрабуйце зноў.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Выдаленне кэшаваных катэгорый...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Выбранае, гісторыя прагляду, схаваныя катэгорыі і прагрэс прайгравання будуць падрыхтаваны для аднаўлення пасля сінхранізацыі.",
             "XTREAM_REFRESH_PROGRESS": "Апрацавана лакальных запісаў: {{current}} / {{total}}",
-            "RAIL_RADIO": "Радыё"
+            "RAIL_RADIO": "Радыё",
+            "RAIL_UNCLASSIFIED": "Без катэгорыі"
         },
         "SOURCES": {
             "TITLE": "Крыніцы",

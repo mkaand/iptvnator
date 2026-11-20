@@ -100,6 +100,7 @@ export const DEFAULT_SETTINGS = {
     startupBehavior: StartupBehavior.FirstView,
     startupWindowMode: 'normal',
     updateChannel: 'stable',
+    appUpdateAutoCheck: false,
     showExternalPlaybackBar: true,
     stripCountryPrefix: false,
     theme: Theme.SystemTheme,
@@ -112,6 +113,10 @@ export const DEFAULT_SETTINGS = {
     remoteControl: false,
     remoteControlPort: 8765,
     epgUrl: [] as string[],
+    epgAutoRefresh: true,
+    epgRefreshOnStartup: false,
+    epgRefreshIntervalHours: 12,
+    epgMatchOrder: ['channel-name', 'tvg-name', 'tvg-id'] as const,
     recordingFolder: '',
     embeddedMpvFrameCopy: false,
     embeddedMpvExtraOptions: '',
@@ -128,7 +133,7 @@ export const DEFAULT_SETTINGS = {
 
 export const DEFAULT_APP_UPDATE_STATUS: ElectronBridgeAppUpdateStatus = {
     currentVersion: '0.22.0',
-    manualDownloadUrl: 'https://github.com/4gray/iptvnator/releases/latest',
+    manualDownloadUrl: 'https://github.com/mkaand/iptvnator/releases/latest',
     status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Idle,
     supportedSelfUpdate: true,
     channel: 'stable',

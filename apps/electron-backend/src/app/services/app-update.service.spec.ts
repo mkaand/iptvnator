@@ -26,7 +26,7 @@ const nightlyReleases = [
         body: '## Nightly\n\nNewest master build\n\n<!-- iptvnator-commit: abc -->',
         draft: false,
         html_url:
-            'https://github.com/4gray/iptvnator-nightly/releases/tag/v0.23.1-nightly.20260915.7',
+            'https://github.com/mkaand/iptvnator/releases/tag/v0.23.1-nightly.20260915.7',
         name: 'Nightly 0.23.1-nightly.20260915.7',
         prerelease: true,
         published_at: '2026-09-15T00:00:00.000Z',
@@ -36,7 +36,7 @@ const nightlyReleases = [
         body: 'not a nightly',
         draft: false,
         html_url:
-            'https://github.com/4gray/iptvnator-nightly/releases/tag/v9.9.9',
+            'https://github.com/mkaand/iptvnator/releases/tag/v9.9.9',
         name: 'stray tag',
         prerelease: false,
         published_at: '2026-09-14T12:00:00.000Z',
@@ -46,7 +46,7 @@ const nightlyReleases = [
         body: '## Nightly\n\nOlder master build',
         draft: false,
         html_url:
-            'https://github.com/4gray/iptvnator-nightly/releases/tag/v0.23.1-nightly.20260914.5',
+            'https://github.com/mkaand/iptvnator/releases/tag/v0.23.1-nightly.20260914.5',
         name: 'Nightly 0.23.1-nightly.20260914.5',
         prerelease: true,
         published_at: '2026-09-14T00:00:00.000Z',
@@ -54,15 +54,14 @@ const nightlyReleases = [
     },
 ];
 
-/** Answers the stable and nightly repositories with their own lists. */
+/** The fork keeps stable and nightly releases in the same repository. */
 function createChannelReleaseFetcher() {
-    return jest.fn(async (url: string) => {
-        const releases = url.includes('/iptvnator-nightly/')
-            ? nightlyReleases
-            : githubReleases;
-
+    return jest.fn(async (_url: string) => {
         return {
-            json: jest.fn().mockResolvedValue(releases),
+            json: jest.fn().mockResolvedValue([
+                ...githubReleases,
+                ...nightlyReleases,
+            ]),
             ok: true,
             status: 200,
             statusText: 'OK',
@@ -74,7 +73,7 @@ const githubReleases = [
     {
         body: '## New\n\nFresh build',
         draft: false,
-        html_url: 'https://github.com/4gray/iptvnator/releases/tag/v0.24.0',
+        html_url: 'https://github.com/mkaand/iptvnator/releases/tag/v0.24.0',
         name: 'v0.24.0',
         prerelease: false,
         published_at: '2026-06-29T00:00:00.000Z',
@@ -83,7 +82,7 @@ const githubReleases = [
     {
         body: '## Current\n\nUpdate details',
         draft: false,
-        html_url: 'https://github.com/4gray/iptvnator/releases/tag/v0.23.0',
+        html_url: 'https://github.com/mkaand/iptvnator/releases/tag/v0.23.0',
         name: 'v0.23.0',
         prerelease: false,
         published_at: '2026-06-28T00:00:00.000Z',
@@ -93,7 +92,7 @@ const githubReleases = [
         body: 'beta notes',
         draft: false,
         html_url:
-            'https://github.com/4gray/iptvnator/releases/tag/v0.22.5-beta',
+            'https://github.com/mkaand/iptvnator/releases/tag/v0.22.5-beta',
         name: 'v0.22.5-beta',
         prerelease: true,
         published_at: '2026-06-27T00:00:00.000Z',
@@ -102,7 +101,7 @@ const githubReleases = [
     {
         body: '## Older\n\nBug fixes',
         draft: false,
-        html_url: 'https://github.com/4gray/iptvnator/releases/tag/v0.22.0',
+        html_url: 'https://github.com/mkaand/iptvnator/releases/tag/v0.22.0',
         name: 'v0.22.0',
         prerelease: false,
         published_at: '2026-06-20T00:00:00.000Z',
@@ -142,6 +141,7 @@ function createService(
         prepareQuit?: () => void;
         cancelPreparedQuit?: () => void;
         channel?: AppUpdateChannel;
+        autoCheck?: boolean;
         appVersion?: string;
     } = {}
 ) {
@@ -154,6 +154,7 @@ function createService(
         },
         appVersion: overrides.appVersion,
         channel: overrides.channel,
+        autoCheck: overrides.autoCheck,
         getMainWindow: () => win,
         cancelPreparedQuit: overrides.cancelPreparedQuit,
         platform: overrides.platform ?? 'darwin',
@@ -173,7 +174,7 @@ describe('AppUpdateService', () => {
         expect(service.getStatus()).toEqual({
             currentVersion: '0.22.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Unsupported,
             supportedSelfUpdate: false,
             channel: 'stable',
@@ -196,7 +197,7 @@ describe('AppUpdateService', () => {
         expect(service.getStatus()).toEqual({
             currentVersion: '0.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Unsupported,
             supportedSelfUpdate: false,
             channel: 'stable',
@@ -222,7 +223,7 @@ describe('AppUpdateService', () => {
         expect(service.getStatus()).toEqual({
             currentVersion: '0.22.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator/releases/latest',
+                'https://github.com/mkaand/iptvnator/releases/latest',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Unsupported,
             supportedSelfUpdate: false,
             channel: 'stable',
@@ -249,7 +250,7 @@ describe('AppUpdateService', () => {
 
         expect(updaterFactory).not.toHaveBeenCalled();
         expect(fetcher).toHaveBeenCalledWith(
-            'https://api.github.com/repos/4gray/iptvnator/releases?per_page=10&page=1',
+            'https://api.github.com/repos/mkaand/iptvnator/releases?per_page=10&page=1',
             expect.any(Object)
         );
         expect(service.getStatus()).toEqual(
@@ -332,7 +333,7 @@ describe('AppUpdateService', () => {
 
         expect(updater.checkForUpdates).not.toHaveBeenCalled();
         expect(fetcher).toHaveBeenCalledWith(
-            'https://api.github.com/repos/4gray/iptvnator/releases?per_page=10&page=1',
+            'https://api.github.com/repos/mkaand/iptvnator/releases?per_page=10&page=1',
             expect.objectContaining({
                 headers: expect.objectContaining({
                     Accept: 'application/vnd.github+json',
@@ -386,13 +387,100 @@ describe('AppUpdateService', () => {
         });
     });
 
+    it('reports a prerelease/draft-only stable catalog as informational', async () => {
+        const fetcher = createReleaseFetcher([
+            [
+                githubReleases[2],
+                {
+                    ...githubReleases[0],
+                    draft: true,
+                    tag_name: 'v0.25.0',
+                },
+            ],
+        ]);
+        const { service } = createService({
+            env: {},
+            fetcher,
+            platform: 'linux',
+        });
+
+        await service.checkForUpdates();
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'No stable release available.',
+            latestVersion: undefined,
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+        });
+    });
+
+    it('reports an empty nightly catalog as informational', async () => {
+        const fetcher = createReleaseFetcher([[]]);
+        const { service } = createService({
+            channel: 'nightly',
+            env: {},
+            fetcher,
+            platform: 'linux',
+        });
+
+        await service.checkForUpdates();
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'No nightly release available.',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+        });
+    });
+
+    it('reports the current stable release as up to date', async () => {
+        const { service } = createService({
+            appVersion: '0.24.0',
+            env: {},
+            fetcher: createReleaseFetcher(),
+            platform: 'linux',
+        });
+
+        await service.checkForUpdates();
+
+        expect(service.getStatus()).toMatchObject({
+            error: undefined,
+            latestVersion: '0.24.0',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+        });
+    });
+
+    it('surfaces a release-catalog network failure', async () => {
+        const fetcher = createReleaseFetcher();
+        fetcher.mockRejectedValueOnce(new Error('network down'));
+        const { service } = createService({
+            env: {},
+            fetcher,
+            platform: 'linux',
+        });
+
+        await service.checkForUpdates();
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'network down',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Error,
+        });
+    });
+
     it('starts a packaged startup check without downloading automatically', async () => {
-        const { service, updater } = createService();
+        const { service, updater } = createService({ autoCheck: true });
 
         await service.checkForUpdatesOnStartup();
 
         expect(updater.autoDownload).toBe(false);
         expect(updater.downloadUpdate).not.toHaveBeenCalled();
+        expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not check on startup by default but still permits a manual check', async () => {
+        const { service, updater } = createService();
+
+        await service.checkForUpdatesOnStartup();
+        expect(updater.checkForUpdates).not.toHaveBeenCalled();
+
+        await service.checkForUpdates();
         expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
     });
 
@@ -608,6 +696,79 @@ describe('AppUpdateService', () => {
 
         expect(cancelPreparedQuit).not.toHaveBeenCalled();
     });
+
+    it('treats an empty published stable catalog as informational', () => {
+        const { service } = createService();
+
+        service.handleError(new Error('No published versions on GitHub'));
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'No stable release available.',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+        });
+    });
+
+    it('treats a missing updater channel file as no compatible release', () => {
+        const { service } = createService();
+        const error = Object.assign(
+            new Error('Cannot find latest.yml in the latest release artifacts'),
+            { code: 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' }
+        );
+
+        service.handleError(error);
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'No stable release available.',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+        });
+    });
+
+    it('treats a missing stable GitHub latest release as informational', () => {
+        const { service } = createService();
+        const error = Object.assign(
+            new Error(
+                'Unable to find latest version on GitHub: HttpError: 404 Not Found'
+            ),
+            { code: 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' }
+        );
+
+        service.handleError(error);
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'No stable release available.',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+        });
+    });
+
+    it('keeps a latest-release updater network failure as an error', () => {
+        const { service } = createService();
+        const error = Object.assign(
+            new Error('Unable to find latest version on GitHub: network down'),
+            { code: 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' }
+        );
+
+        service.handleError(error);
+
+        expect(service.getStatus()).toMatchObject({
+            error: 'Unable to find latest version on GitHub: network down',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Error,
+        });
+    });
+
+    it.each([403, 404, 500])(
+        'keeps an unrelated HTTP %s failure as an error',
+        (statusCode) => {
+            const { service } = createService();
+
+            service.handleError(new Error(`HTTP ${statusCode}`));
+
+            expect(service.getStatus()).toMatchObject({
+                error: `HTTP ${statusCode}`,
+                status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Error,
+            });
+        }
+    );
+
     it('points electron-updater at the stable repository before every check', async () => {
         const { service, updater } = createService();
 
@@ -615,7 +776,7 @@ describe('AppUpdateService', () => {
 
         expect(updater.setFeedURL).toHaveBeenCalledWith({
             provider: 'github',
-            owner: '4gray',
+            owner: 'mkaand',
             repo: 'iptvnator',
         });
         expect(updater.allowPrerelease).toBe(false);
@@ -633,15 +794,15 @@ describe('AppUpdateService', () => {
             channel: 'nightly',
             installedChannel: 'stable',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator-nightly/releases',
+                'https://github.com/mkaand/iptvnator/releases',
         });
 
         await service.checkForUpdates();
 
         expect(updater.setFeedURL).toHaveBeenCalledWith({
             provider: 'github',
-            owner: '4gray',
-            repo: 'iptvnator-nightly',
+            owner: 'mkaand',
+            repo: 'iptvnator',
         });
         expect(updater.allowPrerelease).toBe(true);
         expect(updater.channel).toBe('nightly');
@@ -660,8 +821,8 @@ describe('AppUpdateService', () => {
         });
     });
 
-    it('re-checks on an idle updater when the channel changes and forgets the old verdict', async () => {
-        const { service, updater, win } = createService();
+    it('re-checks on an idle updater when the opted-in channel changes and forgets the old verdict', async () => {
+        const { service, updater, win } = createService({ autoCheck: true });
         await service.checkForUpdates();
         service.handleUpdateNotAvailable({ version: '0.22.0' });
         updater.checkForUpdates.mockClear();
@@ -674,7 +835,7 @@ describe('AppUpdateService', () => {
 
         expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
         expect(updater.setFeedURL).toHaveBeenLastCalledWith(
-            expect.objectContaining({ repo: 'iptvnator-nightly' })
+            expect.objectContaining({ owner: 'mkaand', repo: 'iptvnator' })
         );
         const pushed = (
             win.webContents.send.mock.calls as [
@@ -690,6 +851,34 @@ describe('AppUpdateService', () => {
                     status.release === undefined
             )
         ).toBe(true);
+    });
+
+    it('does not turn a saved channel change into an automatic check', async () => {
+        const { service, updater } = createService();
+        await service.checkForUpdates();
+        updater.checkForUpdates.mockClear();
+
+        service.setChannel('nightly');
+        await Promise.resolve();
+
+        expect(updater.checkForUpdates).not.toHaveBeenCalled();
+        expect(service.getStatus()).toMatchObject({
+            channel: 'nightly',
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Idle,
+        });
+
+        await service.checkForUpdates();
+        expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses a persisted auto-check change for later channel changes', async () => {
+        const { service, updater } = createService();
+
+        service.setAutoCheckEnabled(true);
+        service.setChannel('nightly');
+        await Promise.resolve();
+
+        expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
     });
 
     it('leaves a running download on the old channel but reports the new one', async () => {
@@ -710,7 +899,7 @@ describe('AppUpdateService', () => {
             channel: 'nightly',
             latestVersion: '0.23.0',
             manualDownloadUrl:
-                'https://github.com/4gray/iptvnator-nightly/releases',
+                'https://github.com/mkaand/iptvnator/releases',
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Downloading,
             // The retained download still belongs to the channel it was found on.
             verdictChannel: 'stable',
@@ -718,7 +907,7 @@ describe('AppUpdateService', () => {
     });
 
     it('stamps every verdict with the channel it was checked on', async () => {
-        const { service } = createService();
+        const { service } = createService({ autoCheck: true });
 
         expect(service.getStatus().verdictChannel).toBeUndefined();
 
@@ -749,7 +938,7 @@ describe('AppUpdateService', () => {
 
         expect(updater.checkForUpdates).not.toHaveBeenCalled();
         expect(fetcher).toHaveBeenCalledWith(
-            'https://api.github.com/repos/4gray/iptvnator-nightly/releases?per_page=10&page=1',
+            'https://api.github.com/repos/mkaand/iptvnator/releases?per_page=10&page=1',
             expect.any(Object)
         );
         // v9.9.9 is not a nightly and must not win the list.
@@ -825,7 +1014,7 @@ describe('AppUpdateService', () => {
         const pageOne = Array.from({ length: 10 }, (_, offset) => ({
             body: `release ${34 - offset}`,
             draft: false,
-            html_url: `https://github.com/4gray/iptvnator/releases/tag/v0.${34 - offset}.0`,
+            html_url: `https://github.com/mkaand/iptvnator/releases/tag/v0.${34 - offset}.0`,
             name: `v0.${34 - offset}.0`,
             prerelease: false,
             published_at: '2026-07-01T00:00:00.000Z',
@@ -951,8 +1140,8 @@ describe('AppUpdateService', () => {
         expect(
             fetcher.mock.calls.map(([url]) => new URL(url).pathname)
         ).toEqual([
-            '/repos/4gray/iptvnator-nightly/releases',
-            '/repos/4gray/iptvnator/releases',
+            '/repos/mkaand/iptvnator/releases',
+            '/repos/mkaand/iptvnator/releases',
         ]);
     });
 });

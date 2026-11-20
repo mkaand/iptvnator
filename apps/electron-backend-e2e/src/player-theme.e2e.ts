@@ -77,7 +77,7 @@ for (const engine of [
                 ).href;
             writeFileSync(
                 playlist,
-                `#EXTM3U\n#EXTINF:-1,Theme fixture\n${url}\n`
+                `#EXTM3U\n#EXTINF:-1 group-title="Live TV",Theme fixture\n${url}\n`
             );
             if (embedded) await installEmbeddedMpvSessionCapture(app);
             await importM3uPlaylistFromNativeDialog(app, playlist);

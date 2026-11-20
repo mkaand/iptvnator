@@ -1291,6 +1291,22 @@ the shell; the first also includes the 500 ms of typing. Until the single
 debounce below, the wait was 650 ms (350 ms in the shell, then 300 ms in the
 results component).
 
+### M3U payload prefilter
+
+M3U global search uses a broad payload `LIKE` prefilter and leaves channel
+name, `tvg.name`, group, hidden-group, ranking and pagination decisions to the
+existing JavaScript scorer. If the broad query fills the 5,000-playlist
+candidate limit, the database worker reruns the previous JSON-field-aware
+prefilter before parsing any candidates. That fallback prevents URL or other
+metadata matches from hiding a real channel after the limit.
+
+Set `IPTVNATOR_DISABLE_M3U_BROAD_PREFILTER=1` before launching Electron to use
+the previous field-aware prefilter for every M3U search. The switch is read in
+the database worker process and does not change persisted data. Compare both
+paths with `electron-backend-e2e:benchmark-m3u-global-search-phase4`; keep the
+candidate-limit and metadata-decoy equivalence checks when changing either
+path.
+
 ### First measurement
 
 Local, macOS, 2026-10-04, three full `perf:journeys` runs plus repeated J4

@@ -74,6 +74,39 @@ describe('SettingsComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    it('checks manually after Save and check persists the selected channel', async () => {
+        const persistSettings = jest
+            .spyOn(
+                component as unknown as {
+                    persistSettings(): Promise<boolean>;
+                },
+                'persistSettings'
+            )
+            .mockResolvedValue(true);
+        const check = jest
+            .spyOn(component.appUpdate, 'checkForAppUpdate')
+            .mockResolvedValue(undefined);
+
+        await component.saveAndCheckForAppUpdate();
+
+        expect(persistSettings).toHaveBeenCalledTimes(1);
+        expect(check).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not check an unsaved channel when Save and check fails', async () => {
+        jest.spyOn(
+            component as unknown as {
+                persistSettings(): Promise<boolean>;
+            },
+            'persistSettings'
+        ).mockResolvedValue(false);
+        const check = jest.spyOn(component.appUpdate, 'checkForAppUpdate');
+
+        await component.saveAndCheckForAppUpdate();
+
+        expect(check).not.toHaveBeenCalled();
+    });
+
     /**
      * The facades own the behaviour, but only the component knows when to
      * start and stop them — so the seam itself needs coverage here.
@@ -105,7 +138,9 @@ describe('SettingsComponent', () => {
         await lifecycleFixture.whenStable();
 
         expect(appUpdateInit).toHaveBeenCalledTimes(1);
-        expect(lifecycleComponent.appUpdate.checkAppVersion).toHaveBeenCalled();
+        expect(
+            lifecycleComponent.appUpdate.checkAppVersion
+        ).not.toHaveBeenCalled();
         expect(embeddedMpvLoad).toHaveBeenCalled();
         expect(
             lifecycleComponent.remoteControl.fetchLocalIpAddresses

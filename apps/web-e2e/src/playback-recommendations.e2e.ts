@@ -98,11 +98,13 @@ async function importFatalHlsPlaylist(page: Page): Promise<void> {
         .getByLabel('Insert m3u(8) playlist as text')
         .fill(FATAL_HLS_PLAYLIST);
     await Promise.all([
-        page.waitForURL(/\/workspace\/playlists\/.+\/all$/),
+        page.waitForURL(/\/workspace\/playlists\/.+\/live$/),
         dialog
             .getByRole('button', { name: 'Add playlist', exact: true })
             .click(),
     ]);
+    // The landing is Live; explicitly open All for full-catalog assertions.
+    await page.goto(page.url().replace(/\/live$/, '/all'));
     await expect(page.getByText('1 channel')).toBeVisible();
 }
 

@@ -90,6 +90,8 @@ export interface AppUpdateServiceOptions {
     releaseFetcher?: ReleaseFetcher;
     /** Persisted update channel at startup; `setChannel` follows later saves. */
     channel?: AppUpdateChannel;
+    /** Background checks are opt-in; manual IPC checks always remain available. */
+    autoCheck?: boolean;
     /**
      * Runs right before `quitAndInstall()`. Lets the unsaved-settings close
      * guard stand down for the updater-driven window close, which on macOS
@@ -145,6 +147,28 @@ function normalizeError(error: unknown): string {
     return String(error);
 }
 
+function updaterErrorCode(error: unknown): string | undefined {
+    if (!error || typeof error !== 'object' || !('code' in error)) {
+        return undefined;
+    }
+
+    const code = (error as { code?: unknown }).code;
+    return typeof code === 'string' ? code : undefined;
+}
+
+function isNoCompatiblePublishedRelease(error: unknown): boolean {
+    const code = updaterErrorCode(error);
+    const message = normalizeError(error);
+
+    return (
+        code === 'ERR_UPDATER_NO_PUBLISHED_VERSIONS' ||
+        code === 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' ||
+        message.includes('No published versions on GitHub') ||
+        (code === 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' &&
+            /(?:HTTP(?:Error)?[: ]+|status(?: code)?[: ]+)404\b/i.test(message))
+    );
+}
+
 function resolveCurrentVersion(
     app: AppUpdateAppAdapter,
     appVersion: string | undefined
@@ -170,6 +194,7 @@ export class AppUpdateService {
     private readonly catalogs: AppUpdateReleaseCatalogs;
     private readonly updater: AppUpdaterAdapter | null = null;
     private channel: AppUpdateChannel;
+    private autoCheckEnabled: boolean;
     private checkForUpdatesPromise: Promise<ElectronBridgeAppUpdateStatus> | null =
         null;
     private status: ElectronBridgeAppUpdateStatus;
@@ -183,6 +208,7 @@ export class AppUpdateService {
         );
         this.isPackaged = options.app.isPackaged;
         this.channel = options.channel ?? DEFAULT_APP_UPDATE_CHANNEL;
+        this.autoCheckEnabled = options.autoCheck === true;
         this.supportedSelfUpdate = isSelfUpdateSupported(
             options.app.isPackaged,
             options.platform ?? process.platform,
@@ -241,9 +267,22 @@ export class AppUpdateService {
             return;
         }
 
-        // The last verdict described the other channel's releases.
-        this.setStatus({ latestVersion: undefined, release: undefined });
-        void this.checkForUpdates();
+        // The last verdict described the other channel's releases. A channel
+        // save is not consent to query while automatic checks are disabled.
+        this.setStatus({
+            error: undefined,
+            latestVersion: undefined,
+            release: undefined,
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Idle,
+            verdictChannel: undefined,
+        });
+        if (this.autoCheckEnabled) {
+            void this.checkForUpdates();
+        }
+    }
+
+    setAutoCheckEnabled(enabled: boolean): void {
+        this.autoCheckEnabled = enabled;
     }
 
     async checkForUpdates(): Promise<ElectronBridgeAppUpdateStatus> {
@@ -289,7 +328,7 @@ export class AppUpdateService {
     }
 
     async checkForUpdatesOnStartup(): Promise<ElectronBridgeAppUpdateStatus> {
-        if (!this.isPackaged) {
+        if (!this.isPackaged || !this.autoCheckEnabled) {
             return this.getStatus();
         }
 
@@ -407,6 +446,16 @@ export class AppUpdateService {
             this.options.cancelPreparedQuit?.();
         }
 
+        if (isNoCompatiblePublishedRelease(error)) {
+            this.setStatus({
+                error: `No ${this.channel} release available.`,
+                latestVersion: undefined,
+                release: undefined,
+                status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
+            });
+            return;
+        }
+
         this.setStatus({
             error: normalizeError(error),
             status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Error,
@@ -451,6 +500,9 @@ export class AppUpdateService {
 
         if (!latestRelease) {
             this.setStatus({
+                error: `No ${this.channel} release available.`,
+                latestVersion: undefined,
+                release: undefined,
                 status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.NotAvailable,
             });
             return;

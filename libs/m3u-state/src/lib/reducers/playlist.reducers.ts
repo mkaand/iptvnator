@@ -48,36 +48,41 @@ export const playlistReducers = [
         }
     ),
     on(PlaylistActions.updatePlaylist, (state, action): PlaylistState => {
+        const refreshedPlaylist = action.playlist;
         const isActivePlaylist =
             state.playlists.selectedId === action.playlistId;
         const currentPlaylist = state.playlists.entities[action.playlistId];
         const epgSourceState = resolvePlaylistEpgSourceState({
             detectedEpgUrls:
-                action.playlist.detectedEpgUrls ??
+                refreshedPlaylist.detectedEpgUrls ??
                 currentPlaylist?.detectedEpgUrls,
-            enabledEpgUrls: action.playlist.epgUrls ?? currentPlaylist?.epgUrls,
+            enabledEpgUrls: refreshedPlaylist.epgUrls ?? currentPlaylist?.epgUrls,
             manualEpgUrls:
-                action.playlist.manualEpgUrls ?? currentPlaylist?.manualEpgUrls,
+                refreshedPlaylist.manualEpgUrls ?? currentPlaylist?.manualEpgUrls,
             disabledEpgUrls:
-                action.playlist.disabledEpgUrls ??
+                refreshedPlaylist.disabledEpgUrls ??
                 currentPlaylist?.disabledEpgUrls,
         });
         return {
             ...state,
             channels: isActivePlaylist
-                ? (action.playlist.playlist.items as Channel[])
+                ? (refreshedPlaylist.playlist.items as Channel[])
                 : state.channels,
             channelsLoading: isActivePlaylist ? false : state.channelsLoading,
             playlists: playlistsAdapter.updateOne(
                 {
                     id: action.playlistId,
                     changes: {
-                        ...action.playlist,
+                        ...refreshedPlaylist,
                         _id: action.playlistId,
+                        // A pending Xtream refresh cannot undo a user rename.
+                        ...(currentPlaylist?.serverUrl && {
+                            title: currentPlaylist.title,
+                        }),
                         updateDate: Date.now(),
-                        count: action.playlist.playlist.items.length,
+                        count: refreshedPlaylist.playlist.items.length,
                         userAgent:
-                            action.playlist.userAgent ??
+                            refreshedPlaylist.userAgent ??
                             currentPlaylist?.userAgent,
                         favorites: currentPlaylist?.favorites ?? [],
                         m3uContentOverrides: currentPlaylist?.m3uContentOverrides ?? {},
@@ -87,7 +92,7 @@ export const playlistReducers = [
                         disabledEpgUrls: epgSourceState.disabledEpgUrls,
                         autoRefresh:
                             currentPlaylist?.autoRefresh ??
-                            action.playlist.autoRefresh,
+                            refreshedPlaylist.autoRefresh,
                     },
                 },
                 state.playlists

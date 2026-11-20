@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "ペアレンタルロックを無効にしました",
             "PIN_CHANGED_TOAST": "PIN を変更しました",
             "LOCKED_TOAST": "ロックしました"
-        }
+        },
+        "EPG_AUTO_REFRESH": "番組表の自動更新",
+        "EPG_AUTO_REFRESH_DESC": "アプリの実行中に、設定済みのXMLTVソースを自動更新します。",
+        "EPG_REFRESH_ON_STARTUP": "起動時に番組表を更新",
+        "EPG_REFRESH_ON_STARTUP_DESC": "IPTVnatorの起動時に、保存済みの番組表ソースを強制更新します。",
+        "EPG_REFRESH_INTERVAL": "更新間隔",
+        "EPG_REFRESH_INTERVAL_DESC": "自動更新の頻度を1つ選択してください。",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "最後に視聴したライブチャンネルを再生",
+        "APP_UPDATE_NO_RELEASE": "利用可能なリリースはありません",
+        "APP_UPDATE_AUTO_CHECK": "更新を自動確認",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "初期設定では無効です。いつでも手動で確認できます。"
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "サーバーに保存できませんでした。接続を確認して、もう一度お試しください。",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "キャッシュ済みカテゴリを削除しています...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "お気に入り、視聴履歴、非表示カテゴリ、再生進捗を同期後に復元できるよう準備しています。",
             "XTREAM_REFRESH_PROGRESS": "処理済みローカルレコード: {{current}} / {{total}}",
-            "RAIL_RADIO": "ラジオ"
+            "RAIL_RADIO": "ラジオ",
+            "RAIL_UNCLASSIFIED": "未分類"
         },
         "SOURCES": {
             "TITLE": "ソース",

@@ -217,6 +217,8 @@ export interface Settings {
      * stable release exists.
      */
     updateChannel?: AppUpdateChannel;
+    /** Desktop only. Missing values intentionally keep startup checks off. */
+    appUpdateAutoCheck?: boolean;
     /** Show the desktop footer bar for external playback status */
     showExternalPlaybackBar?: boolean;
     /** Strip country/group prefixes like "US | " or "UK - " from channel names */

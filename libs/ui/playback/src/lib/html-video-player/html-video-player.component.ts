@@ -360,6 +360,7 @@ export class HtmlVideoPlayerComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private handleHlsError(url: string, data: ErrorData): void {
+        if (data.response?.code === 403) this.hls?.stopLoad();
         emitFatalHlsPlaybackError(
             url,
             data,

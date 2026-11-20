@@ -14,7 +14,6 @@ import {
     openWorkspaceSection,
     resetMockServers,
     saveSettings,
-    setSwitch,
     test,
     waitForStalkerCatalog,
     waitForXtreamWorkspaceReady,
@@ -62,12 +61,11 @@ test('@epg @xtream @electron removes uploaded guide data and restores provider E
         await app.mainWindow
             .locator('.epg-source-row input')
             .fill(source.resourceUrl);
-        await setSwitch(
-            app.mainWindow
-                .getByTestId('toggle-prefer-uploaded-epg')
-                .getByRole('switch'),
-            true
-        );
+        const configuredFirst = app.mainWindow
+            .getByTestId('xtream-epg-source-priority')
+            .getByRole('radio', { name: 'Configured XMLTV First' });
+        await configuredFirst.check();
+        await expect(configuredFirst).toBeChecked();
         await saveSettings(app.mainWindow);
         await expect
             .poll(

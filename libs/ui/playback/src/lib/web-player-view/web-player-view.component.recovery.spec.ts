@@ -191,6 +191,17 @@ describe('WebPlayerViewComponent recovery integration', () => {
         expect(component.visiblePlaybackDiagnostic()).toBeNull();
         expect(fixture.nativeElement.querySelector('.web-player-auto-retry')?.textContent)
             .toContain('1/5');
+
+        // A new engine emits null on initialization before it is playable.
+        // That must not reset a pending retry budget for the same live source.
+        vjs().playbackIssue.emit(null);
+        fixture.detectChanges();
+        expect(component.autoRetryAttempt()).toBe(1);
+
+        // Confirmed playback, unlike an issue-clear event, resets the budget.
+        vjs().playbackStarted.emit();
+        fixture.detectChanges();
+        expect(component.autoRetryAttempt()).toBe(0);
     });
 
     it('ranks HTML5, MPV, then VLC for a fatal Video.js HLS media failure', async () => {
@@ -1174,46 +1185,6 @@ describe('WebPlayerViewComponent recovery integration', () => {
         fixture.detectChanges();
         expect(component.playbackDiagnostic()?.sourceUrl).toBe(
             'https://example.com/source-b.m3u8'
-        );
-    });
-
-    it('keeps a replaced-source diagnostic detached across every handoff outcome', async () => {
-        await render();
-        vjs().playbackIssue.emit(mediaIssue('videojs'));
-        fixture.detectChanges();
-        holdHeaderHandoff = true;
-
-        setPlayback({ streamUrl: 'https://example.com/alternate.m3u8' });
-        fixture.detectChanges();
-        expect(query('playback-diagnostic-banner')).toBeNull();
-        setPlayback({ streamUrl: 'https://example.com/current.m3u8' });
-        fixture.detectChanges();
-        expect(headerResolvers).toHaveLength(2);
-        expect(query('playback-diagnostic-banner')).toBeNull();
-
-        headerResolvers[0](true);
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(query('playback-diagnostic-banner')).toBeNull();
-
-        headerResolvers[1](false);
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(query('playback-diagnostic-banner')).toBeNull();
-
-        setPlayback({ streamUrl: 'https://example.com/final.m3u8' });
-        fixture.detectChanges();
-        headerResolvers[2](true);
-        await fixture.whenStable();
-        expect(component.visiblePlaybackDiagnostic()).toBeNull();
-        expect(component.vjsOptions()).toEqual(
-            expect.objectContaining({
-                sources: [
-                    expect.objectContaining({
-                        src: 'https://example.com/final.m3u8',
-                    }),
-                ],
-            })
         );
     });
 

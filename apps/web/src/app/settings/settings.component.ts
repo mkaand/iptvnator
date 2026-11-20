@@ -368,7 +368,6 @@ export class SettingsComponent
         this.form.bindDashboardControlsEnabledState();
         this.formReady.set(true);
         void this.embeddedMpv.load();
-        this.appUpdate.checkAppVersion();
         this.appUpdate.init();
         void this.remoteControl.fetchLocalIpAddresses();
 
@@ -402,6 +401,12 @@ export class SettingsComponent
      */
     onSubmit(): void {
         void this.persistSettings();
+    }
+
+    async saveAndCheckForAppUpdate(): Promise<void> {
+        if (await this.persistSettings()) {
+            await this.appUpdate.checkForAppUpdate();
+        }
     }
 
     /**

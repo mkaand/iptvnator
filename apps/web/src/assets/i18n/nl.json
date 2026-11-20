@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "Ouderlijk toezicht uitgeschakeld",
             "PIN_CHANGED_TOAST": "Pincode gewijzigd",
             "LOCKED_TOAST": "Vergrendeld"
-        }
+        },
+        "EPG_AUTO_REFRESH": "EPG automatisch vernieuwen",
+        "EPG_AUTO_REFRESH_DESC": "Werk ingestelde XMLTV-bronnen automatisch bij terwijl de app draait.",
+        "EPG_REFRESH_ON_STARTUP": "EPG vernieuwen bij opstarten",
+        "EPG_REFRESH_ON_STARTUP_DESC": "Vernieuw opgeslagen EPG-bronnen geforceerd wanneer IPTVnator start.",
+        "EPG_REFRESH_INTERVAL": "Vernieuwingsinterval",
+        "EPG_REFRESH_INTERVAL_DESC": "Kies één frequentie voor automatisch vernieuwen.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "Laatst bekeken livekanaal afspelen",
+        "APP_UPDATE_NO_RELEASE": "Geen release beschikbaar",
+        "APP_UPDATE_AUTO_CHECK": "Automatisch op updates controleren",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "Standaard uitgeschakeld. Je kunt op elk moment handmatig controleren."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "Opslaan op de server is mislukt. Controleer de verbinding en probeer het opnieuw.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Gecachte categorieën worden verwijderd...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Favorieten, kijkgeschiedenis, verborgen categorieën en afspeelvoortgang worden klaargezet voor herstel na de synchronisatie.",
             "XTREAM_REFRESH_PROGRESS": "Lokale records verwerkt: {{current}} / {{total}}",
-            "RAIL_RADIO": "Radiozenders"
+            "RAIL_RADIO": "Radiozenders",
+            "RAIL_UNCLASSIFIED": "Niet ingedeeld"
         },
         "SOURCES": {
             "TITLE": "Bronnen",

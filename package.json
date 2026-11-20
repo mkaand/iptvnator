@@ -1,12 +1,12 @@
 {
     "name": "iptvnator",
-    "version": "0.25.0-catalog.6",
+    "version": "0.30.2",
     "engines": {
         "node": "^22.22.3 || ^24.15.0"
     },
     "license": "MIT",
     "description": "IPTV player application.",
-    "homepage": "https://github.com/4gray/iptvnator",
+    "homepage": "https://github.com/mkaand/iptvnator",
     "author": {
         "name": "4gray",
         "email": "fourgray@proton.me"
@@ -225,7 +225,7 @@
         "@playwright/test": "^1.64.0",
         "@schematics/angular": "22.2.2",
         "@swc-node/register": "1.12.1",
-        "@swc/core": "1.16.13",
+        "@swc/core": "1.16.22",
         "@swc/helpers": "0.5.23",
         "@tailwindcss/typography": "0.5.20",
         "@types/better-sqlite3": "^9.6.0",

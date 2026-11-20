@@ -28,9 +28,11 @@ test('@web @m3u basic playlist import flow', async ({ page }) => {
     });
     await expect(addButton).toBeEnabled();
     await Promise.all([
-        page.waitForURL(/\/workspace\/playlists\/.+\/all$/),
+        page.waitForURL(/\/workspace\/playlists\/.+\/live$/),
         addButton.click(),
     ]);
+    // The landing is Live; explicitly open All for full-catalog assertions.
+    await page.goto(page.url().replace(/\/live$/, '/all'));
     await expect(page.getByText('test', { exact: true })).toBeVisible();
     await expect(page.getByText('4 channels')).toBeVisible();
     await expect(page.getByText('1. Channel 1')).toBeVisible();

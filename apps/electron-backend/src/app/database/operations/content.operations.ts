@@ -417,12 +417,14 @@ async function selectXtreamGlobalSearchCandidatesWithContentScan(
 }
 
 /**
- * Per-word M3U payload prefilter conditions, AND-ed by the caller — the same
- * compound-word composition as `buildContentTitleSearchConditions`: "A&E"
- * must reach channel names like "US: A&E" (issue #1161), while the other
- * words of the query keep constraining the candidate playlists.
+ * Per-word M3U payload prefilter conditions, AND-ed by the caller. The broad
+ * mode drops JSON field wrappers but keeps the same word/token/compound arms;
+ * JavaScript scoring remains the authoritative field-aware result filter.
  */
-function buildM3uPayloadSearchConditions(searchTerm: string) {
+function buildM3uPayloadSearchConditionsForMode(
+    searchTerm: string,
+    broadPrefilter: boolean
+) {
     let groupIndex = 0;
 
     return getSearchWordPlans(searchTerm)
@@ -435,7 +437,9 @@ function buildM3uPayloadSearchConditions(searchTerm: string) {
                             : 'contains';
                     groupIndex += 1;
                     const patterns = tokens.flatMap((token) =>
-                        buildM3uPayloadTextFieldPatterns(token, mode)
+                        broadPrefilter
+                            ? buildLikePatterns(token, 'contains')
+                            : buildM3uPayloadTextFieldPatterns(token, mode)
                     );
                     const likeConditions = patterns.map(
                         (pattern) =>
@@ -453,9 +457,10 @@ function buildM3uPayloadSearchConditions(searchTerm: string) {
                 return tokenArm;
             }
 
-            const compoundConditions = buildM3uPayloadCompoundPatterns(
-                plan.compound
-            ).map(
+            const compoundPatterns = broadPrefilter
+                ? buildCompoundLikePatterns(plan.compound)
+                : buildM3uPayloadCompoundPatterns(plan.compound);
+            const compoundConditions = compoundPatterns.map(
                 (pattern) =>
                     sql`${schema.playlists.payload} LIKE ${pattern} ESCAPE '\\'`
             );
@@ -464,6 +469,10 @@ function buildM3uPayloadSearchConditions(searchTerm: string) {
                 : or(tokenArm, ...compoundConditions);
         })
         .filter((condition) => condition !== undefined);
+}
+
+function isM3uBroadPrefilterEnabled(): boolean {
+    return process.env['IPTVNATOR_DISABLE_M3U_BROAD_PREFILTER'] !== '1';
 }
 
 function asStringArray(value: unknown): string[] {
@@ -1215,22 +1224,36 @@ export async function globalSearch(
         types.includes(GLOBAL_SEARCH_CONTENT_TYPES.Live) &&
         hasGlobalSearchSource(sources, GLOBAL_SEARCH_RESULT_SOURCES.M3u)
     ) {
-        const rows = await db
-            .select({
-                id: schema.playlists.id,
-                name: schema.playlists.name,
-                payload: schema.playlists.payload,
-            })
-            .from(schema.playlists)
-            .where(
-                and(
-                    inArray(schema.playlists.type, [...M3U_PLAYLIST_TYPES]),
-                    sql`${schema.playlists.payload} IS NOT NULL`,
-                    ...buildM3uPayloadSearchConditions(searchTerm)
+        const selectRows = (broadPrefilter: boolean) =>
+            db
+                .select({
+                    id: schema.playlists.id,
+                    name: schema.playlists.name,
+                    payload: schema.playlists.payload,
+                })
+                .from(schema.playlists)
+                .where(
+                    and(
+                        inArray(schema.playlists.type, [...M3U_PLAYLIST_TYPES]),
+                        sql`${schema.playlists.payload} IS NOT NULL`,
+                        ...buildM3uPayloadSearchConditionsForMode(
+                            searchTerm,
+                            broadPrefilter
+                        )
+                    )
                 )
-            )
-            .orderBy(schema.playlists.name)
-            .limit(candidateLimit);
+                .orderBy(schema.playlists.name)
+                .limit(candidateLimit);
+
+        const broadPrefilter = isM3uBroadPrefilterEnabled();
+        let rows = await selectRows(broadPrefilter);
+
+        // A broad payload match can include URLs and other metadata. If those
+        // false positives fill the playlist candidate limit, rerun the old
+        // field-aware filter so a real match after row 5,000 cannot be lost.
+        if (broadPrefilter && rows.length >= candidateLimit) {
+            rows = await selectRows(false);
+        }
 
         results.push(
             ...buildScoredM3uGlobalSearchResults(

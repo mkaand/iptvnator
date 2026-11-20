@@ -61,7 +61,9 @@ async function addM3uPlaylist(page: Page): Promise<void> {
         .getByRole('button', { name: 'Add playlist', exact: true })
         .click();
     await expect(dialog).toBeHidden();
-    await page.waitForURL(/playlists.*all/);
+    await page.waitForURL(/playlists.*live/);
+    // Retain full-catalog coverage after validating the Live landing.
+    await page.goto(page.url().replace(/\/live$/, '/all'));
 }
 
 async function addStalkerPortal(page: Page): Promise<void> {
@@ -244,7 +246,9 @@ test('@self-hosted M3U User-Agent reaches the provider on import and refresh', a
         await dialog
             .getByRole('button', { name: 'Add playlist', exact: true })
             .click();
-        await page.waitForURL(/playlists.*all/);
+        await page.waitForURL(/playlists.*live/);
+        // Retain full-catalog coverage after validating the Live landing.
+        await page.goto(page.url().replace(/\/live$/, '/all'));
         await expect(page.getByText('1. Initial UA Channel')).toBeVisible();
         const catalogUrl = page.url();
         await page.reload();

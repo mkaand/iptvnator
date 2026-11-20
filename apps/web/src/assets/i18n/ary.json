@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "الرقابة الأبوية تطفات",
             "PIN_CHANGED_TOAST": "رمز PIN تبدّل",
             "LOCKED_TOAST": "تقفل"
-        }
+        },
+        "EPG_AUTO_REFRESH": "تحديث دليل البرامج بوحدو",
+        "EPG_AUTO_REFRESH_DESC": "تحديث مصادر XMLTV اللي ضبطتي أوتوماتيكياً ملي كيكون التطبيق خدام.",
+        "EPG_REFRESH_ON_STARTUP": "تحديث الدليل ملي كيبدا التطبيق",
+        "EPG_REFRESH_ON_STARTUP_DESC": "عاود حدّث مصادر الدليل المحفوظة ملي كيتحل IPTVnator.",
+        "EPG_REFRESH_INTERVAL": "المدة بين التحديثات",
+        "EPG_REFRESH_INTERVAL_DESC": "اختار شحال من مرة يتحدّث بوحدو.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "شغّل آخر قناة مباشرة",
+        "APP_UPDATE_NO_RELEASE": "ما كاين حتى إصدار",
+        "APP_UPDATE_AUTO_CHECK": "قلّب على التحديثات بوحدك",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "مطفي افتراضياً. تقدر تقلّب يدوياً فوقاش بغيتي."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "ما قدرناش نحفظو فالسيرفر. شوف الاتصال وعاود جرب.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "كنحيدو التصنيفات المخزنة...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "كنخليو المفضلات، تاريخ المشاهدة، التصنيفات المخفية، وتقدم التشغيل واجدين باش يرجعو من بعد المزامنة.",
             "XTREAM_REFRESH_PROGRESS": "السجلات المحلية اللي تجهزات: {{current}} / {{total}}",
-            "RAIL_RADIO": "راديو مباشر"
+            "RAIL_RADIO": "راديو مباشر",
+            "RAIL_UNCLASSIFIED": "بلا تصنيف"
         },
         "SOURCES": {
             "TITLE": "المصادر",

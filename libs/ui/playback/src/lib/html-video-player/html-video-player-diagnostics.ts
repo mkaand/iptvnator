@@ -65,8 +65,12 @@ export function emitFatalHlsPlaybackError(
     levels: readonly PlaybackCodecTrack[] = []
 ): void {
     const codecs = collectPlaybackCodecs(levels);
+    // hls.js can mark HTTP 403 as nonfatal and retry indefinitely.
+    // To our playback UI it is an explicit access denial, which must
+    // trigger the current stream's fallback or visible diagnosis.
+    const denied = data.response?.code === 403 && !data.fatal;
     const issue = classifyHlsPlaybackIssue(
-        createHlsPlaybackEvidence(data),
+        createHlsPlaybackEvidence(denied ? { ...data, fatal: true } : data),
         createHtml5SourceMetadata(
             url,
             'application/x-mpegURL',

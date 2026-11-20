@@ -22,6 +22,8 @@ import { componentTemplates } from './component-templates.mjs';
 const SCANNED_PATHSPECS = ['apps/web/*.ts', 'libs/*.ts'];
 
 export const THEME_FILE = 'apps/web/src/m3-theme.scss';
+// The lazily routed EPG settings section owns the Material radio theme.
+export const LAZY_THEME_FILE = 'apps/web/src/app/settings/settings-epg-section.component.scss';
 
 /**
  * Runtime imports of a Material entry point: a static import that is not
@@ -239,7 +241,11 @@ if (isMain) {
         await templateThemeUsers(sources, readTemplate)
     );
     const scope = themedComponents(
-        await readFile(path.join(rootDir, THEME_FILE), 'utf8')
+        (await Promise.all(
+            [THEME_FILE, LAZY_THEME_FILE].map((file) =>
+                readFile(path.join(rootDir, file), 'utf8')
+            )
+        )).join('\n')
     );
     const { unthemed, unused } = compareThemeScope(required, scope);
 

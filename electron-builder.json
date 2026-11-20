@@ -21,7 +21,7 @@
     "publish": [
         {
             "provider": "github",
-            "owner": "4gray",
+            "owner": "mkaand",
             "repo": "iptvnator"
         }
     ],
@@ -115,8 +115,8 @@
         "desktop": {
             "entry": {
                 "X-AppImage-Name": "IPTVnator",
-                "X-AppImage-Homepage": "https://github.com/4gray/iptvnator",
-                "X-AppImage-UpdateURL": "https://github.com/4gray/iptvnator"
+                "X-AppImage-Homepage": "https://github.com/mkaand/iptvnator",
+                "X-AppImage-UpdateURL": "https://github.com/mkaand/iptvnator"
             }
         }
     },

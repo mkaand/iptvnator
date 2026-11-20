@@ -6,7 +6,7 @@ import {
 } from '@iptvnator/shared/interfaces';
 import { getChannelEpgAliasKey, resolveRawChannelEpgLookupKey } from './channel-epg-lookup.util';
 
-export interface ExactEpgChannel extends XmltvChannelIdentity {}
+export type ExactEpgChannel = XmltvChannelIdentity;
 
 /**
  * Pick the first *successful* XMLTV lookup in the configured field order.

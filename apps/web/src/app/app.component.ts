@@ -1,5 +1,6 @@
 import {
     Component,
+    DestroyRef,
     effect,
     inject,
     OnInit,
@@ -13,6 +14,7 @@ import { Store } from '@ngrx/store';
 import { TranslateService } from '@ngx-translate/core';
 import {
     EpgRuntimeBridgeService,
+    EpgProgressService,
     EpgService,
 } from '@iptvnator/epg/data-access';
 import {
@@ -24,7 +26,7 @@ import { EpgProgressPanelComponent } from '@iptvnator/ui/epg/progress-panel';
 // library (channel lists, EPG, forms, date-fns) on the initial path.
 import { WindowControlsComponent } from '@iptvnator/ui/components/window-controls';
 import { PlaylistActions, selectAllPlaylistsMeta } from '@iptvnator/m3u-state';
-import { filter, take } from 'rxjs';
+import { take } from 'rxjs';
 import {
     DataService,
     ParentalLockService,
@@ -34,11 +36,11 @@ import {
 } from '@iptvnator/services';
 import {
     AUTO_UPDATE_PLAYLISTS,
+    ElectronBridgeAppUpdateStatus,
     Language,
     Settings,
     STORE_KEY,
     Theme,
-    createDevLogger,
 } from '@iptvnator/shared/interfaces';
 import { AppDateLocaleService } from './app-date-locales';
 import { EpgAutoRefreshService } from './services/epg-auto-refresh.service';
@@ -49,8 +51,6 @@ import { PlaylistOpenRequestService } from './services/playlist-open-request.ser
 import { AppUpdateNotificationPanelComponent } from './app-update-notification-panel.component';
 import { AppStartupStatusComponent } from './app-startup-status.component';
 import { syncDocumentLanguage } from './services/document-language';
-
-const debugAppComponent = createDevLogger('AppComponent');
 
 @Component({
     selector: 'app-root',
@@ -65,38 +65,52 @@ const debugAppComponent = createDevLogger('AppComponent');
     ],
 })
 export class AppComponent implements OnInit {
-    readonly routeReady = signal(false);
-    get usesCustomWindowControls() {
-        return this.runtime.usesCustomWindowControls;
-    }
+    readonly ready = signal(false);
+    readonly progress = inject(EpgProgressService);
+    readonly updateNotice = signal<ElectronBridgeAppUpdateStatus | null>(null);
+    private readonly destroyRef = inject(DestroyRef);
     private actions$ = inject(Actions);
     private dataService = inject(DataService);
-    private readonly dateLocales = inject(AppDateLocaleService);
-    private epgBridge = inject(EpgRuntimeBridgeService);
-    private epgService = inject(EpgService);
-    private readonly epgAutoRefresh = inject(EpgAutoRefreshService);
+    private readonly locales = inject(AppDateLocaleService);
+    private bridge = inject(EpgRuntimeBridgeService);
+    private epg = inject(EpgService);
+    private readonly epgRefresh = inject(EpgAutoRefreshService);
     private snackBar = inject(LazySnackBar);
     private router = inject(Router);
     private store = inject(Store);
     private translate = inject(TranslateService);
-    private settingsService = inject(SettingsService);
-    private settingsStore = inject(SettingsStore);
-    private readonly epgSources = inject(EpgSourceSettingsService);
-    private playbackKeepAwake = inject(PlaybackKeepAwakeService);
-    private readonly parentalLock = inject(ParentalLockService);
-    private readonly parentalLockEnforcement = inject(
+    private prefs = inject(SettingsService);
+    private stored = inject(SettingsStore);
+    private readonly sources = inject(EpgSourceSettingsService);
+    private keepAwake = inject(PlaybackKeepAwakeService);
+    private readonly lock = inject(ParentalLockService);
+    private readonly lockGuard = inject(
         ParentalLockEnforcementService
     );
-    private playlistOpenRequests = inject(PlaylistOpenRequestService);
-    private runtime = inject(RuntimeCapabilitiesService);
-    private readonly workspaceShellActions = inject(WORKSPACE_SHELL_ACTIONS);
-    private readonly contextDrawer = inject(WorkspaceShellContextDrawerService);
-
-    /** Default language as fallback */
-    private readonly DEFAULT_LANG = Language.ENGLISH;
+    private openFiles = inject(PlaylistOpenRequestService);
+    readonly runtime = inject(RuntimeCapabilitiesService);
+    private readonly shell = inject(WORKSPACE_SHELL_ACTIONS);
+    private readonly drawer = inject(WorkspaceShellContextDrawerService);
 
     constructor() {
         syncDocumentLanguage();
+
+        // An update only needs its UI chunk once a notification exists.
+        // Subscribe before the first navigation so late status events are not lost.
+        const bridge = window.electron;
+        if (bridge?.getAppUpdateStatus) {
+            const onUpdateStatus = (status: ElectronBridgeAppUpdateStatus) => {
+                if (
+                    status.latestVersion &&
+                    (status.status === 'available' ||
+                        status.status.startsWith('download'))
+                ) {
+                    this.updateNotice.set(status);
+                }
+            };
+            this.destroyRef.onDestroy(bridge.onAppUpdateStatusChange(onUpdateStatus));
+            void bridge.getAppUpdateStatus().then(onUpdateStatus, () => undefined);
+        }
 
         // Body-level class (like 'dark-theme') so layout adjustments also
         // reach content rendered outside app-root, e.g. cdk-overlay content.
@@ -108,35 +122,32 @@ export class AppComponent implements OnInit {
         // association, macOS `open-file`) are resolved in the main process and
         // queued there until the renderer subscribes. Start listening as early
         // as possible so a first-launch file is not delayed behind app init.
-        this.playlistOpenRequests.start();
+        this.openFiles.start();
 
         // Keep the display awake while a built-in player is playing video
         // (Electron powerSaveBlocker / PWA Screen Wake Lock, issue #1095).
-        this.playbackKeepAwake.start();
+        this.keepAwake.start();
 
         // Parental lock: load the PIN hash and lock store, then keep the
         // in-memory catalogs in step with lock/unlock (issue #285).
-        void this.parentalLock.initialize();
-        this.parentalLockEnforcement.start();
+        void this.lock.initialize();
+        this.lockGuard.start();
 
         effect(() => {
-            const size = this.settingsStore.coverSize?.() ?? 'medium';
+            const size = this.stored.coverSize?.() ?? 'medium';
             document.documentElement.dataset.coverSize = size;
         });
 
         if (this.runtime.isElectron) {
             document.addEventListener('keydown', (event) => {
-                if (event.ctrlKey || event.metaKey) {
-                    // While the phone context drawer is modal, workspace
-                    // shortcuts must not navigate away behind it — same gate
-                    // as Ctrl/Cmd+F, Ctrl/Cmd+K, and the shortcuts dialog.
-                    if (this.contextDrawer.isOpen()) {
-                        return;
-                    }
-                    if (event.key === 'r') {
-                        event.preventDefault();
-                        this.workspaceShellActions.openGlobalRecent();
-                    }
+                // Do not navigate behind the modal phone context drawer.
+                if (
+                    (event.ctrlKey || event.metaKey) &&
+                    !this.drawer.isOpen() &&
+                    event.key === 'r'
+                ) {
+                    event.preventDefault();
+                    this.shell.openGlobalRecent();
                 }
             });
         }
@@ -144,11 +155,11 @@ export class AppComponent implements OnInit {
 
     ngOnInit() {
         this.store.dispatch(PlaylistActions.loadPlaylists());
-        this.translate.setDefaultLang(this.DEFAULT_LANG);
+        this.translate.setDefaultLang(Language.ENGLISH);
 
         this.initSettings();
-        this.epgAutoRefresh.start();
-        this.triggerAutoUpdatePlaylists();
+        this.epgRefresh.start();
+        this.autoUpdatePlaylists();
     }
 
     /**
@@ -156,7 +167,7 @@ export class AppComponent implements OnInit {
      * application based on them
      */
     initSettings(): void {
-        this.settingsService
+        this.prefs
             .getValueFromLocalStorage<Settings>(STORE_KEY.Settings)
             .subscribe((settings: Settings) => {
                 if (settings && Object.keys(settings).length > 0) {
@@ -164,10 +175,10 @@ export class AppComponent implements OnInit {
                     // Settings are stored in IndexedDB and loaded by the settings store
                     // Only specific Electron settings (MPV/VLC paths) are sent when changed in settings component
 
-                    const resolvedLang = settings.language ?? this.DEFAULT_LANG;
+                    const resolvedLang = settings.language ?? Language.ENGLISH;
                     // The switch re-renders every date with the new locale;
                     // its data is a lazy chunk that must be registered first.
-                    void this.dateLocales.use(resolvedLang);
+                    void this.locales.use(resolvedLang);
                     // Mirror the active language to localStorage so the next
                     // cold start can read it synchronously in app.config.ts's
                     // getInitialLanguage() and avoid the English-then-localized
@@ -183,17 +194,16 @@ export class AppComponent implements OnInit {
 
                     // Fetch EPG if URLs are configured (only fetch stale data)
                     if (
-                        this.epgBridge.supportsImport &&
+                        this.bridge.supportsImport &&
                         settings.epgAutoRefresh !== false &&
                         settings.epgRefreshOnStartup !== true &&
-                        settings.epgUrl?.length > 0 &&
                         settings.epgUrl?.some((u) => u !== '')
                     ) {
                         this.fetchStaleEpgData(settings.epgUrl);
                     }
 
                     if (settings.theme) {
-                        this.settingsService.changeTheme(settings.theme);
+                        this.prefs.changeTheme(settings.theme);
                     } else {
                         this.detectDarkMode();
                     }
@@ -207,7 +217,7 @@ export class AppComponent implements OnInit {
      * Applies the operating system color scheme when no explicit theme is set
      */
     detectDarkMode(): void {
-        this.settingsService.changeTheme(Theme.SystemTheme);
+        this.prefs.changeTheme(Theme.SystemTheme);
     }
 
     /**
@@ -223,46 +233,33 @@ export class AppComponent implements OnInit {
      * Data is considered fresh if updated within the last 12 hours.
      */
     private async fetchStaleEpgData(urls: string[]): Promise<void> {
-        await this.settingsStore.loadSettings();
-        const revision = this.epgSources.revision();
+        await this.stored.loadSettings();
+        const revision = this.sources.revision();
         const fetchCurrentSources = async (sources: string[]) => {
-            await this.epgSources.waitForReconciliation();
-            this.epgService.fetchEpg(
-                this.epgSources.retainCurrentSources(sources, revision)
+            await this.sources.waitForReconciliation();
+            this.epg.fetchEpg(
+                this.sources.retainCurrentSources(sources, revision)
             );
         };
-        if (!this.epgBridge.supportsSourceFreshness) {
+        if (!this.bridge.supportsSourceFreshness) {
             await fetchCurrentSources(urls);
             return;
         }
 
         try {
-            const result = await this.epgBridge.checkFreshness(urls, 12);
+            const result = await this.bridge.checkFreshness(urls, 12);
 
-            if (!result) {
-                await fetchCurrentSources(urls);
-                return;
+            const staleUrls = result?.staleUrls ?? urls;
+            if (result?.freshUrls.length && !staleUrls.length) {
+                void this.snackBar.open(
+                    this.translate.instant('EPG.UP_TO_DATE'),
+                    this.translate.instant('CLOSE'),
+                    { duration: 3000 }
+                );
             }
 
-            if (result.freshUrls.length > 0) {
-                debugAppComponent(
-                    `EPG: ${result.freshUrls.length} source(s) already fresh, skipping fetch`
-                );
-                // Show snackbar if all EPG sources are fresh (no stale URLs)
-                if (result.staleUrls.length === 0) {
-                    void this.snackBar.open(
-                        this.translate.instant('EPG.UP_TO_DATE'),
-                        this.translate.instant('CLOSE'),
-                        { duration: 3000 }
-                    );
-                }
-            }
-
-            if (result.staleUrls.length > 0) {
-                debugAppComponent(
-                    `EPG: Fetching ${result.staleUrls.length} stale source(s)`
-                );
-                await fetchCurrentSources(result.staleUrls);
+            if (staleUrls.length) {
+                await fetchCurrentSources(staleUrls);
             }
         } catch (error) {
             console.error('Error checking EPG freshness, fetching all:', error);
@@ -274,7 +271,7 @@ export class AppComponent implements OnInit {
     /**
      * Triggers auto-update for playlists that have autoRefresh enabled
      */
-    private triggerAutoUpdatePlaylists(): void {
+    private autoUpdatePlaylists(): void {
         // Wait for playlists to be loaded successfully
         this.actions$
             .pipe(
@@ -285,10 +282,7 @@ export class AppComponent implements OnInit {
                 // Get all playlists from store
                 this.store
                     .select(selectAllPlaylistsMeta)
-                    .pipe(
-                        take(1),
-                        filter((playlists) => playlists.length > 0)
-                    )
+                    .pipe(take(1))
                     .subscribe((playlists) => {
                         // Filter playlists with autoRefresh enabled
                         const playlistsToUpdate = playlists.filter(
@@ -297,9 +291,6 @@ export class AppComponent implements OnInit {
 
                         // Trigger auto-update if there are playlists to update
                         if (playlistsToUpdate.length > 0) {
-                            debugAppComponent(
-                                `Auto-updating ${playlistsToUpdate.length} playlist(s) on startup`
-                            );
                             this.dataService.sendIpcEvent(
                                 AUTO_UPDATE_PLAYLISTS,
                                 playlistsToUpdate

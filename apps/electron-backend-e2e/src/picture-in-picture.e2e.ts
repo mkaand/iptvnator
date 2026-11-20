@@ -20,9 +20,9 @@ const media = readFileSync(
 );
 const playlist = [
     '#EXTM3U',
-    '#EXTINF:-1 tvg-id="pip-one" group-title="News",Channel 1',
+    '#EXTINF:-1 tvg-id="pip-one" group-title="Live TV - News",Channel 1',
     `${streamHost}/one.webm`,
-    '#EXTINF:-1 tvg-id="pip-two" group-title="News",Positive News TV',
+    '#EXTINF:-1 tvg-id="pip-two" group-title="Live TV - News",Positive News TV',
     `${streamHost}/two.webm`,
 ].join('\n');
 

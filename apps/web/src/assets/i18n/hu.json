@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "Szülői felügyelet kikapcsolva",
             "PIN_CHANGED_TOAST": "PIN-kód módosítva",
             "LOCKED_TOAST": "Zárolva"
-        }
+        },
+        "EPG_AUTO_REFRESH": "EPG automatikus frissítése",
+        "EPG_AUTO_REFRESH_DESC": "Az alkalmazás futása közben automatikusan frissíti a beállított XMLTV-forrásokat.",
+        "EPG_REFRESH_ON_STARTUP": "EPG frissítése indításkor",
+        "EPG_REFRESH_ON_STARTUP_DESC": "Az IPTVnator indulásakor kényszerítetten frissíti a mentett EPG-forrásokat.",
+        "EPG_REFRESH_INTERVAL": "Frissítési időköz",
+        "EPG_REFRESH_INTERVAL_DESC": "Válasszon egy automatikus frissítési gyakoriságot.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "Legutóbbi élő csatorna lejátszása",
+        "APP_UPDATE_NO_RELEASE": "Nincs elérhető kiadás",
+        "APP_UPDATE_AUTO_CHECK": "Frissítések automatikus keresése",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "Alapértelmezés szerint ki van kapcsolva. Bármikor ellenőrizheti manuálisan."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "Nem sikerült menteni a szerverre. Ellenőrizze a kapcsolatot, és próbálja újra.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Gyorsítótárazott kategóriák eltávolítása…",
             "XTREAM_REFRESH_DETAIL_LOCAL": "A kedvencek, a megtekintési előzmények, a rejtett kategóriák és a lejátszási előrehaladás megőrzése, hogy a szinkronizálás után visszaállíthatók legyenek.",
             "XTREAM_REFRESH_PROGRESS": "Feldolgozott helyi bejegyzések: {{current}} / {{total}}",
-            "RAIL_RADIO": "Rádió"
+            "RAIL_RADIO": "Rádió",
+            "RAIL_UNCLASSIFIED": "Besorolatlan"
         },
         "SOURCES": {
             "TITLE": "Források",

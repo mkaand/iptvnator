@@ -36,6 +36,10 @@ export const SETTINGS_CONTROL_SECTIONS: Readonly<Record<string, string>> = {
     epgUrl: 'epg',
     epgViewMode: 'epg',
     epgOffsetMinutes: 'epg',
+    epgAutoRefresh: 'epg',
+    epgRefreshOnStartup: 'epg',
+    epgRefreshIntervalHours: 'epg',
+    epgMatchOrder: 'epg',
     preferUploadedEpgOverXtream: 'epg',
     showDashboard: 'dashboard',
     dashboardRails: 'dashboard',
@@ -44,6 +48,7 @@ export const SETTINGS_CONTROL_SECTIONS: Readonly<Record<string, string>> = {
     tmdb: 'tmdb',
     m3uVodDetails: 'tmdb',
     updateChannel: 'about',
+    appUpdateAutoCheck: 'about',
 };
 
 /**

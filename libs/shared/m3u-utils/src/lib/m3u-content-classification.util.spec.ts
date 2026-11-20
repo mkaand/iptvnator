@@ -72,7 +72,7 @@ describe('M3U presentation classification', () => {
 
     it('uses URL and name instead of volatile parsed-channel ID', () => {
         const channel = { name: 'Example', url: 'https://example.invalid/a.mp4', id: 'old' } as Channel;
-        expect(m3uContentOverrideKey(channel)).toBe(m3uContentOverrideKey({ ...channel, id: 'new' }));
+        expect(m3uContentOverrideKey(channel)).toBe(m3uContentOverrideKey({ ...channel, id: 'new' } as Channel));
         expect(m3uContentOverrideKey(channel)).not.toBe(m3uContentOverrideKey({ ...channel, name: 'Other' }));
     });
 

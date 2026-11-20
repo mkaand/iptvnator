@@ -13,7 +13,12 @@ import { StorageMap } from '@ngx-pwa/local-storage';
 import { BehaviorSubject, firstValueFrom, of, Subject } from 'rxjs';
 import { EpgRuntimeBridgeService, EpgService } from '@iptvnator/epg/data-access';
 import { PlaylistContextFacade } from '@iptvnator/playlist/shared/util';
-import { ChannelActions, PlaylistActions } from '@iptvnator/m3u-state';
+import {
+    ChannelActions,
+    PlaylistActions,
+    replaceExactEpgNameAliases,
+    resolveChannelEpgLookupKey,
+} from '@iptvnator/m3u-state';
 import {
     ParentalLockService,
     PlaylistsService,
@@ -81,6 +86,7 @@ describe('ChannelListContainerComponent', () => {
     let dispatch: jest.Mock;
     let activePlaylistSignal: ReturnType<typeof signal<PlaylistMeta | null>>;
     let epgService: {
+        cacheInvalidated$: Subject<void>;
         epgAvailable$: BehaviorSubject<boolean>;
         getChannelMetadataForChannels: jest.Mock;
         getCurrentProgramsForChannels: jest.Mock;
@@ -88,6 +94,13 @@ describe('ChannelListContainerComponent', () => {
     let favoriteChannelIds$: BehaviorSubject<string[]>;
     let runtimeCapabilities: { supportsEpg: boolean };
     let storageGet: jest.Mock;
+    let epgBridge: {
+        getEpgChannels: jest.Mock;
+        getEpgMappingsBatch: jest.Mock;
+        getProgramsForChannels: jest.Mock;
+        supportsGuide: boolean;
+        supportsEpgMapping: boolean;
+    };
 
     beforeEach(async () => {
         const routerEvents$ = new Subject<NavigationEnd>();
@@ -95,7 +108,15 @@ describe('ChannelListContainerComponent', () => {
         favoriteChannelIds$ = new BehaviorSubject<string[]>([]);
         runtimeCapabilities = { supportsEpg: true };
         storageGet = jest.fn().mockReturnValue(of({}));
+        epgBridge = {
+            getEpgChannels: jest.fn().mockResolvedValue({ channels: [] }),
+            getEpgMappingsBatch: jest.fn().mockResolvedValue({}),
+            getProgramsForChannels: jest.fn().mockResolvedValue(null),
+            supportsGuide: false,
+            supportsEpgMapping: false,
+        };
         epgService = {
+            cacheInvalidated$: new Subject<void>(),
             epgAvailable$: new BehaviorSubject<boolean>(false),
             getChannelMetadataForChannels: jest
                 .fn()
@@ -148,13 +169,7 @@ describe('ChannelListContainerComponent', () => {
                     // The list tests cover current-programme requests, not
                     // the Electron IPC bridge or XMLTV identity importer.
                     provide: EpgRuntimeBridgeService,
-                    useValue: {
-                        getEpgChannels: jest.fn().mockResolvedValue({ channels: [] }),
-                        getEpgMappingsBatch: jest.fn().mockResolvedValue({}),
-                        getProgramsForChannels: jest.fn().mockResolvedValue(null),
-                        supportsGuide: false,
-                        supportsEpgMapping: false,
-                    },
+                    useValue: epgBridge,
                 },
                 {
                     provide: PlaylistsService,
@@ -219,6 +234,8 @@ describe('ChannelListContainerComponent', () => {
 
         fixture = TestBed.createComponent(ChannelListContainerComponent);
     });
+
+    afterEach(() => replaceExactEpgNameAliases(new Map()));
 
     it('keeps the groups view (and its unlock row) when every group is withheld', () => {
         const withheld = signal(0);
@@ -369,6 +386,193 @@ describe('ChannelListContainerComponent', () => {
             ['guide-news'],
             { sourceUrls: ['https://playlist.example.com/guide.xml'] }
         );
+    });
+
+    it('keeps mixed Groups content but scopes batched EPG work to the selected group', async () => {
+        runtimeCapabilities.supportsEpg = true;
+        storageGet.mockReturnValue(of({ epgUrl: ['https://example.com/epg.xml'] }));
+        fixture.componentRef.setInput('activeView', 'groups');
+        fixture.detectChanges();
+
+        const documentary = createChannel('bbc-earth', 'https://example.com/bbc');
+        documentary.group = { title: 'Documentary' };
+        const movie = createChannel('movie-1', 'https://example.com/movie');
+        movie.group = { title: 'Movies' };
+        fixture.componentInstance.channelList = [documentary, movie];
+        await settleEpgAliasMicrotasks();
+        expect(epgService.getCurrentProgramsForChannels).not.toHaveBeenCalled();
+        expect(fixture.componentInstance.groupedChannels()).toEqual({
+            Documentary: [documentary],
+            Movies: [movie],
+        });
+
+        fixture.componentInstance.onSelectedGroupChanged('Documentary');
+        await settleEpgAliasMicrotasks();
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenLastCalledWith(
+            ['bbc-earth'],
+            undefined
+        );
+        const calls = epgService.getCurrentProgramsForChannels.mock.calls.length;
+        fixture.componentInstance.onSelectedGroupChanged('Documentary');
+        await settleEpgAliasMicrotasks();
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenCalledTimes(calls);
+
+        fixture.componentInstance.onSelectedGroupChanged('Movies');
+        await settleEpgAliasMicrotasks();
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenLastCalledWith(
+            ['movie-1'],
+            undefined
+        );
+    });
+
+    it('keeps full-playlist XMLTV aliases while Groups programme batches stay scoped', async () => {
+        runtimeCapabilities.supportsEpg = true;
+        storageGet.mockReturnValue(of({ epgUrl: ['https://example.com/epg.xml'] }));
+        epgBridge.getEpgChannels.mockResolvedValue({
+            channels: [
+                { id: 'guide-documentary', displayName: 'Documentary HD' },
+                { id: 'guide-movie', displayName: 'Movie HD' },
+            ],
+        });
+        fixture.componentRef.setInput('activeView', 'groups');
+        fixture.detectChanges();
+
+        const documentary = createChannel('raw-documentary', 'https://example.com/doc');
+        documentary.name = 'Documentary HD';
+        documentary.tvg.name = 'Documentary HD';
+        documentary.group = { title: 'Documentary' };
+        const movie = createChannel('raw-movie', 'https://example.com/movie');
+        movie.name = 'Movie HD';
+        movie.tvg.name = 'Movie HD';
+        movie.group = { title: 'Movies' };
+
+        fixture.componentInstance.channelList = [documentary, movie];
+        fixture.componentInstance.onSelectedGroupChanged('Documentary');
+        await settleEpgAliasMicrotasks();
+
+        expect(resolveChannelEpgLookupKey(documentary)).toBe('guide-documentary');
+        expect(resolveChannelEpgLookupKey(movie)).toBe('guide-movie');
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenLastCalledWith(
+            ['guide-documentary'],
+            undefined
+        );
+
+        fixture.componentInstance.onSelectedGroupChanged('Movies');
+        await settleEpgAliasMicrotasks();
+
+        expect(resolveChannelEpgLookupKey(documentary)).toBe('guide-documentary');
+        expect(resolveChannelEpgLookupKey(movie)).toBe('guide-movie');
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenLastCalledWith(
+            ['guide-movie'],
+            undefined
+        );
+        expect(epgBridge.getEpgMappingsBatch).toHaveBeenCalledTimes(1);
+
+        jest.useFakeTimers();
+        try {
+            epgService.cacheInvalidated$.next();
+            jest.advanceTimersByTime(2000);
+            await settleEpgAliasMicrotasks();
+            expect(epgBridge.getEpgMappingsBatch).toHaveBeenCalledTimes(2);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('limits a 55K mixed Groups playlist to one selected-group batch', async () => {
+        runtimeCapabilities.supportsEpg = true;
+        storageGet.mockReturnValue(of({ epgUrl: ['https://example.com/epg.xml'] }));
+        fixture.componentRef.setInput('activeView', 'groups');
+        fixture.detectChanges();
+        const channels = Array.from({ length: 55_000 }, (_, index) => {
+            const channel = createChannel(`item-${index}`, `https://example.com/${index}`);
+            channel.group = { title: index < 20 ? 'Documentary' : 'Mixed content' };
+            return channel;
+        });
+        fixture.componentInstance.channelList = channels;
+        fixture.componentInstance.onSelectedGroupChanged('Documentary');
+        await settleEpgAliasMicrotasks();
+
+        const ids = epgService.getCurrentProgramsForChannels.mock.calls.at(-1)?.[0];
+        expect(channels).toHaveLength(55_000);
+        expect(ids).toHaveLength(20);
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenCalledTimes(1);
+        expect(epgService.getChannelMetadataForChannels).toHaveBeenCalledTimes(1);
+        expect(epgBridge.getEpgMappingsBatch).toHaveBeenCalledTimes(1);
+    });
+
+    it('restores the complete EPG scope after leaving Groups', async () => {
+        runtimeCapabilities.supportsEpg = true;
+        storageGet.mockReturnValue(
+            of({ epgUrl: ['https://example.com/epg.xml'] })
+        );
+        fixture.componentRef.setInput('activeView', 'groups');
+        fixture.detectChanges();
+
+        const documentary = createChannel(
+            'bbc-earth',
+            'https://example.com/bbc'
+        );
+        documentary.group = { title: 'Documentary' };
+        const movie = createChannel('movie-1', 'https://example.com/movie');
+        movie.group = { title: 'Movies' };
+        fixture.componentInstance.channelList = [documentary, movie];
+        fixture.componentInstance.onSelectedGroupChanged('Documentary');
+        await settleEpgAliasMicrotasks();
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenLastCalledWith(
+            ['bbc-earth'],
+            undefined
+        );
+
+        fixture.componentRef.setInput('activeView', 'all');
+        fixture.detectChanges();
+        await settleEpgAliasMicrotasks();
+
+        expect(epgService.getCurrentProgramsForChannels).toHaveBeenLastCalledWith(
+            ['bbc-earth', 'movie-1'],
+            undefined
+        );
+    });
+
+    it('refreshes only the selected group when EPG availability changes', async () => {
+        jest.useFakeTimers();
+        try {
+            runtimeCapabilities.supportsEpg = true;
+            storageGet.mockReturnValue(
+                of({ epgUrl: ['https://example.com/epg.xml'] })
+            );
+            fixture.componentRef.setInput('activeView', 'groups');
+            fixture.detectChanges();
+
+            const documentary = createChannel(
+                'bbc-earth',
+                'https://example.com/bbc'
+            );
+            documentary.group = { title: 'Documentary' };
+            const movie = createChannel(
+                'movie-1',
+                'https://example.com/movie'
+            );
+            movie.group = { title: 'Movies' };
+            fixture.componentInstance.channelList = [documentary, movie];
+            fixture.componentInstance.onSelectedGroupChanged('Documentary');
+            await settleEpgAliasMicrotasks();
+            epgService.getCurrentProgramsForChannels.mockClear();
+
+            epgService.epgAvailable$.next(true);
+            jest.advanceTimersByTime(2000);
+            await settleEpgAliasMicrotasks();
+
+            expect(
+                epgService.getCurrentProgramsForChannels
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                epgService.getCurrentProgramsForChannels
+            ).toHaveBeenCalledWith(['bbc-earth'], undefined);
+        } finally {
+            fixture.destroy();
+            jest.useRealTimers();
+        }
     });
 
     it('drops a superseded EPG refresh that completes after the newer one', async () => {

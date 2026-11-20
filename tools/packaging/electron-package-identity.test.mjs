@@ -215,11 +215,11 @@ test('AppImage desktop metadata supports AppManager without changing other Linux
         assert.equal(fields['X-AppImage-Version'], version);
         assert.equal(
             fields['X-AppImage-Homepage'],
-            'https://github.com/4gray/iptvnator'
+            'https://github.com/mkaand/iptvnator'
         );
         assert.equal(
             fields['X-AppImage-UpdateURL'],
-            'https://github.com/4gray/iptvnator'
+            'https://github.com/mkaand/iptvnator'
         );
         assert.equal(fields.StartupWMClass, 'iptvnator');
         assert.equal(fields.Exec, 'AppRun --ozone-platform=x11 %U');
@@ -291,7 +291,7 @@ test('GitHub Releases auto-update metadata is generated and uploaded', () => {
     assert.deepEqual(electronBuilderConfig.publish, [
         {
             provider: 'github',
-            owner: '4gray',
+            owner: 'mkaand',
             repo: 'iptvnator',
         },
     ]);
@@ -457,7 +457,7 @@ test('package layout verifier uses canonical helpers and direct dependencies', (
     );
 
     const launcherVerifier = packageLayoutVerifier.match(
-        /function verifyLinuxLauncher\([\s\S]*?\n}\n\nfunction verifyFlatpakPermissions/
+        /function verifyLinuxLauncher\([\s\S]*?\r?\n}\r?\n\r?\nfunction verifyFlatpakPermissions/
     )?.[0];
     assert.ok(launcherVerifier);
     assert.ok(

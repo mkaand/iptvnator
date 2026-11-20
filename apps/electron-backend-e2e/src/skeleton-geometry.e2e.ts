@@ -80,9 +80,15 @@ test.describe('Skeleton geometry', () => {
             await importM3uPlaylistFromNativeDialog(app, m3uFixturePath);
             await goToDashboard(page);
 
-            // All channels, the default view.
-            let hold = await holdIpcChannel(app, playlistChannel);
+            // Enter All channels through Angular navigation, then go
+            // back from the dashboard under an IPC hold. Direct page.goto
+            // tries to open a nonexistent file:// path in packaged Electron.
             await openM3uFromDashboard(page);
+            await page.getByRole('link', { name: 'All channels', exact: true }).click();
+            await expect(page.locator(firstChannelRow).first()).toBeVisible();
+            await goToDashboard(page);
+            let hold = await holdIpcChannel(app, playlistChannel);
+            await page.goBack();
             await hold.waitUntilHeld();
             await expect(
                 page.locator(`${loadingState} .channels-loading-header`)

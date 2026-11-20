@@ -23,6 +23,7 @@ import {
     saveSettings,
     setSwitch,
     test,
+    waitForM3uCatalog,
     waitForXtreamWorkspaceReady,
 } from './electron-test-fixtures';
 import {
@@ -105,6 +106,7 @@ test.describe('Electron Settings', () => {
             await goToDashboard(app.mainWindow);
             await importM3uPlaylistFromNativeDialog(app, m3uFixturePath);
             await app.mainWindow.waitForURL(/\/workspace\/playlists\/.+/);
+            await waitForM3uCatalog(app.mainWindow);
 
             const firstChannel = channelItemByTitle(
                 app.mainWindow,
@@ -117,7 +119,7 @@ test.describe('Electron Settings', () => {
             await expectExternalPlayerLaunch(app, 0, {
                 player: 'mpv',
                 title: 'Channel 1',
-                url: 'https://example.channels/path-to-file/1.m3u8',
+                url: 'https://example.channels/live/1.m3u8',
             });
 
             await openSettings(app.mainWindow);
@@ -144,7 +146,7 @@ test.describe('Electron Settings', () => {
             await expectExternalPlayerLaunch(app, 0, {
                 player: 'mpv',
                 title: 'Positive News TV',
-                url: 'https://example.channels/path-to-file/2.m3u8',
+                url: 'https://example.channels/live/2.m3u8',
             });
         } finally {
             await closeElectronApp(app);
@@ -342,8 +344,9 @@ test.describe('Electron Settings', () => {
             await goToDashboard(app.mainWindow);
             await importM3uPlaylistFromNativeDialog(app, m3uFixturePath);
             await app.mainWindow.waitForURL(/\/workspace\/playlists\/.+/);
+            await waitForM3uCatalog(app.mainWindow);
             await app.mainWindow.route(
-                'https://example.channels/path-to-file/1.m3u8',
+                'https://example.channels/live/1.m3u8',
                 () => {
                     // Keep the synthetic stream pending so its network failure
                     // cannot replace the shared controls with a diagnostic.

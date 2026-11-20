@@ -125,11 +125,14 @@ async function importPlaylist(
     await dialog.getByRole('radio', { name: /Raw m3u text/i }).click();
     await dialog.getByLabel('Insert m3u(8) playlist as text').fill(content);
     await Promise.all([
-        page.waitForURL(/\/workspace\/playlists\/.+\/all$/),
+        page.waitForURL(/\/workspace\/playlists\/.+\/live$/),
         dialog
             .getByRole('button', { name: 'Add playlist', exact: true })
             .click(),
     ]);
+    // The landing is Live; select All via the workspace navigation so
+    // its history/context are preserved for detail and focus assertions.
+    await page.getByRole('link', { name: 'All channels', exact: true }).click();
     await expect(page.getByText(`${count} channels`)).toBeVisible();
 }
 
@@ -508,10 +511,16 @@ for (const theme of ['light', 'dark']) {
             .getByRole('link', { name: 'Recently viewed', exact: true })
             .first()
             .click();
-        const recent = page.locator(
-            'app-global-favorites-list [appChannelScrollFocus]'
-        );
-        await recent.locator('.channel-name').first().click();
-        await expect(recent).toBeFocused();
+        // Recently viewed is a card collection, not the old favorites
+        // scroll list. Exercise keyboard activation on its actual card.
+        const recentCard = page.getByRole('button', {
+            name: 'Station 2',
+            exact: true,
+        });
+        await expect(recentCard).toBeVisible();
+        await recentCard.focus();
+        await expect(recentCard).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('app-web-player-view video').first()).toBeVisible();
     });
 }

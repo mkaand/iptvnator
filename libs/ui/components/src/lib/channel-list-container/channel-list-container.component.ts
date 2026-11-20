@@ -42,6 +42,7 @@ import {
     forkJoin,
     firstValueFrom,
     map,
+    merge,
     Subscription,
 } from 'rxjs';
 import {
@@ -226,6 +227,14 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
     readonly sidebarToggleRequested = output<void>();
     /** Groups view only: the group whose channels are currently listed. */
     readonly selectedGroupChange = output<string | null>();
+    /** Selected Groups pane; scopes EPG work without changing displayed content. */
+    private selectedGroupKey: string | null = null;
+    private epgAliasCache: {
+        channels: Channel[];
+        matchOrderKey: string;
+        playlistId: string | null;
+        promise: Promise<Map<string, string>>;
+    } | null = null;
     private readonly routeSearchTerm = queryParamSignal(
         this.route,
         'q',
@@ -282,6 +291,22 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
         });
     });
     private appliedEpgMatchOrder = '';
+    private appliedEpgView: string | null = null;
+    private readonly epgViewRefreshEffect = effect(() => {
+        const view = this.activeView();
+        if (this.appliedEpgView === view) return;
+
+        const isInitial = this.appliedEpgView === null;
+        this.appliedEpgView = view;
+        if (isInitial || this._channelList.length === 0) return;
+
+        if (view === 'groups') {
+            // The newly created Groups view will emit its actual selection.
+            // Do not briefly reuse a group retained by the previous instance.
+            this.selectedGroupKey = null;
+        }
+        untracked(() => this.fetchEpgForChannels(this._channelList));
+    });
     private readonly epgMatchingRefreshEffect = effect(() => {
         const key = (this.settingsStore.resolvedEpgMatchOrder?.() ??
             DEFAULT_EPG_MATCH_ORDER).join('|');
@@ -513,12 +538,15 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
             this.globalEpgUrls.set([]);
         }
 
-        this.epgAvailabilitySubscription = this.epgService.epgAvailable$
-            .pipe(
-                filter((available) => available),
-                debounceTime(EPG_AVAILABILITY_REFRESH_DEBOUNCE_MS)
-            )
+        this.epgAvailabilitySubscription = merge(
+            this.epgService.epgAvailable$.pipe(filter((available) => available)),
+            this.epgService.cacheInvalidated$
+        )
+            .pipe(debounceTime(EPG_AVAILABILITY_REFRESH_DEBOUNCE_MS))
             .subscribe(() => {
+                // A completed EPG import can change the guide identities while
+                // the playlist array itself stays the same.
+                this.epgAliasCache = null;
                 this.fetchEpgForChannels(this._channelList);
             });
 
@@ -547,6 +575,7 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
         }
 
         ++this.epgAliasGeneration;
+        this.epgAliasCache = null;
         this.epgAvailabilitySubscription?.unsubscribe();
         this.epgFetchSubscription?.unsubscribe();
         this.channelList$.complete();
@@ -556,16 +585,19 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
      * Fetches EPG data for all channels
      */
     private async fetchEpgForChannels(channels: Channel[]): Promise<void> {
+        const epgChannels = this.getEpgChannelsForCurrentView(channels);
         // A fetch started for a previous channel list, EPG scope or display
         // offset must not install its map after this one: cancel it first.
         const request = ++this.epgAliasGeneration;
         this.epgFetchSubscription?.unsubscribe();
         if (!this.enableEpg()) {
+            this.epgAliasCache = null;
             this.channelEpgMap.set(new Map());
             this.channelIconMap.set(new Map());
             return;
         }
-        if (!channels || channels.length === 0) {
+        if (channels.length === 0) {
+            this.epgAliasCache = null;
             replaceExactEpgNameAliases(new Map());
             this.channelEpgMap.set(new Map());
             this.channelIconMap.set(new Map());
@@ -575,40 +607,35 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
         // EPG keys from another provider are not necessarily XMLTV IDs.
         // Resolve only unambiguous, exact display names, without persisting
         // mappings or overriding a user-created mapping / valid guide ID.
+        const matchOrder =
+            this.settingsStore.resolvedEpgMatchOrder?.() ??
+            DEFAULT_EPG_MATCH_ORDER;
         try {
-            const rawKeys = Array.from(
-                new Set(
-                    channels
-                        .map((channel) => resolveRawChannelEpgLookupKey(channel))
-                        .filter(Boolean)
-                )
+            const aliases = await this.getOrCreateEpgAliases(
+                channels,
+                matchOrder
             );
-            const [guide, manual] = await Promise.all([
-                this.epgBridge.getEpgChannels(),
-                this.epgBridge.getEpgMappingsBatch(rawKeys),
-            ]);
             if (request !== this.epgAliasGeneration) return;
-
-            // No programme-coverage pass is required: the guide's first
-            // exact display-name entry is authoritative for auto mapping.
-            const imported = guide?.channels ?? [];
-            replaceExactEpgNameAliases(
-                buildExactEpgNameAliases(
-                    channels,
-                    imported,
-                    manual ?? {},
-                    this.settingsStore.resolvedEpgMatchOrder?.() ?? DEFAULT_EPG_MATCH_ORDER
-                )
-            );
+            replaceExactEpgNameAliases(aliases);
         } catch {
             if (request !== this.epgAliasGeneration) return;
             replaceExactEpgNameAliases(new Map());
         }
         if (request !== this.epgAliasGeneration) return;
 
+        // Exact XMLTV aliases belong to the full playlist because the active
+        // player and guide can still resolve a channel outside the selected
+        // Groups row. Only the expensive current-programme/metadata lookup is
+        // scoped to the selected group.
+        if (epgChannels.length === 0) {
+            this.channelEpgMap.set(new Map());
+            this.channelIconMap.set(new Map());
+            return;
+        }
+
         const channelIds = Array.from(
             new Set(
-                channels
+                epgChannels
                     .map((channel) => resolveChannelEpgLookupKey(channel))
                     .filter((id) => !!id)
             )
@@ -670,6 +697,71 @@ export class ChannelListContainerComponent implements OnInit, OnDestroy {
                 )
             );
         });
+    }
+
+    private getOrCreateEpgAliases(
+        channels: Channel[],
+        matchOrder: readonly (typeof DEFAULT_EPG_MATCH_ORDER)[number][]
+    ): Promise<Map<string, string>> {
+        const playlistId = this.activePlaylist()?._id ?? null;
+        const matchOrderKey = matchOrder.join('|');
+        const cached = this.epgAliasCache;
+        if (
+            cached?.channels === channels &&
+            cached.playlistId === playlistId &&
+            cached.matchOrderKey === matchOrderKey
+        ) {
+            return cached.promise;
+        }
+
+        const rawKeys = Array.from(
+            new Set(
+                channels
+                    .map((channel) => resolveRawChannelEpgLookupKey(channel))
+                    .filter(Boolean)
+            )
+        );
+        const cache = {
+            channels,
+            playlistId,
+            matchOrderKey,
+            promise: Promise.all([
+                this.epgBridge.getEpgChannels(),
+                this.epgBridge.getEpgMappingsBatch(rawKeys),
+            ]).then(([guide, manual]) =>
+                // No programme-coverage pass is required: the guide's first
+                // exact display-name entry is authoritative for auto mapping.
+                buildExactEpgNameAliases(
+                    channels,
+                    guide?.channels ?? [],
+                    manual ?? {},
+                    matchOrder
+                )
+            ),
+        };
+        this.epgAliasCache = cache;
+        void cache.promise.catch(() => {
+            if (this.epgAliasCache === cache) {
+                this.epgAliasCache = null;
+            }
+        });
+        return cache.promise;
+    }
+
+    onSelectedGroupChanged(groupKey: string | null): void {
+        if (this.selectedGroupKey === groupKey) {
+            this.selectedGroupChange.emit(groupKey);
+            return;
+        }
+        this.selectedGroupKey = groupKey;
+        this.selectedGroupChange.emit(groupKey);
+        void this.fetchEpgForChannels(this._channelList);
+    }
+
+    private getEpgChannelsForCurrentView(channels: Channel[]): Channel[] {
+        if (this.activeView() !== 'groups') return channels ?? [];
+        if (!this.selectedGroupKey) return [];
+        return this.groupedChannels()[this.selectedGroupKey] ?? [];
     }
 
     private getPlaylistEpgLookupOptions():

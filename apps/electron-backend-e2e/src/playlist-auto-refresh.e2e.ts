@@ -94,7 +94,7 @@ test.describe('Electron startup playlist auto-refresh', () => {
             await sourceRowByTitle(app.mainWindow, autoRefreshSourceName)
                 .first()
                 .click();
-            await app.mainWindow.waitForURL(/\/workspace\/playlists\/.+\/all$/);
+            await app.mainWindow.waitForURL(/\/workspace\/playlists\/.+\/live$/);
             await writeGate.release();
             await waitForM3uCatalog(app.mainWindow);
             await expect(

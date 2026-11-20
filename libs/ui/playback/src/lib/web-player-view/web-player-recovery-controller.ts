@@ -124,7 +124,10 @@ export class WebPlayerRecoveryController {
         }
         if (!issue) {
             recoverySession.settle(binding);
-            this.cancelAutoRetry();
+            // Each engine remount clears its old issue before loading media.
+            // This is not proof that playback resumed: resetting the counter
+            // here would turn repeated HTTP 403s into an endless Retry 1/5.
+            // A real playbackStarted() or a changed session cancels retries.
             this.clearDiagnostic();
             return;
         }
@@ -196,15 +199,17 @@ export class WebPlayerRecoveryController {
 
     private scheduleAutoRetry(issue: PlaybackDiagnostic): boolean {
         const status = issue.httpStatus ?? issue.vhs?.httpStatus ?? issue.hls?.httpStatus;
-        const url = this.deps.streamUrl();
+        // A fallback may use MPEG-TS even when the original URL was HLS.
+        // Retry the active transport, not the original source.
+        const url = this.deps.resolvedPlayback().streamUrl;
         const isHls = /\.m3u8(?:[?#]|$)/i.test(url);
         const transient = status === 403 || status === 408 ||
             status === 429 || (status != null && status >= 500);
         // Explicit .m3u8 URLs retain immediate format/player fallback when
         // the media engine gives no HTTP status (often a codec/decode fault).
-        // Known transient HTTP status codes, including temporary 403, may
-        // instead benefit from a capped reconnection attempt. PHP and
-        // extensionless sources keep their existing unknown-status retry.
+        // Temporary 403 and 408/429/5xx retain capped retries for HLS.
+        // The effective MPEG-TS transport is never incorrectly retried as HLS.
+        // PHP and extensionless streams keep unknown-status retry.
         const retryableStatus = transient ||
             (status == null && isAmbiguousStreamUrl(url));
         if (!this.deps.resolvedIsLive() ||

@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "تم تعطيل الرقابة الأبوية",
             "PIN_CHANGED_TOAST": "تم تغيير رمز PIN",
             "LOCKED_TOAST": "تم القفل"
-        }
+        },
+        "EPG_AUTO_REFRESH": "تحديث دليل البرامج تلقائيًا",
+        "EPG_AUTO_REFRESH_DESC": "تحديث مصادر XMLTV المحددة تلقائيًا أثناء تشغيل التطبيق.",
+        "EPG_REFRESH_ON_STARTUP": "تحديث دليل البرامج عند بدء التشغيل",
+        "EPG_REFRESH_ON_STARTUP_DESC": "تحديث مصادر دليل البرامج المحفوظة عند تشغيل IPTVnator.",
+        "EPG_REFRESH_INTERVAL": "فاصل التحديث",
+        "EPG_REFRESH_INTERVAL_DESC": "اختر وتيرة واحدة للتحديث التلقائي.",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "تشغيل آخر قناة مباشرة",
+        "APP_UPDATE_NO_RELEASE": "لا يتوفر إصدار",
+        "APP_UPDATE_AUTO_CHECK": "التحقق من التحديثات تلقائيًا",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "معطل افتراضيًا. يمكنك التحقق يدويًا في أي وقت."
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "تعذّر الحفظ على الخادم. تحقق من الاتصال وحاول مرة أخرى.",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "جارٍ إزالة الفئات المخزّنة مؤقتًا...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "نحتفظ بالمفضلة وسجل المشاهدة والفئات المخفية وتقدم التشغيل لاستعادتها بعد المزامنة.",
             "XTREAM_REFRESH_PROGRESS": "السجلات المحلية المعالجة: {{current}} / {{total}}",
-            "RAIL_RADIO": "راديو"
+            "RAIL_RADIO": "راديو",
+            "RAIL_UNCLASSIFIED": "غير مصنف"
         },
         "SOURCES": {
             "TITLE": "المصادر",

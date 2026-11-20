@@ -1,4 +1,7 @@
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import {
+    HttpClientTestingModule,
+    HttpTestingController,
+} from '@angular/common/http/testing';
 import { inject, TestBed } from '@angular/core/testing';
 import { StorageMap } from '@ngx-pwa/local-storage';
 import { of } from 'rxjs';
@@ -74,6 +77,27 @@ describe('Service: Settings', () => {
                 .subscribe((value) => {
                     expect(value).toBe(version);
                 });
+        }
+    ));
+
+    it('reads stable release versions only from the fork', inject(
+        [SettingsService, HttpTestingController],
+        (service: SettingsService, http: HttpTestingController) => {
+            const received = jest.fn();
+            service.getAppVersion().subscribe(received);
+
+            http.expectOne(
+                'https://api.github.com/repos/mkaand/iptvnator/releases'
+            ).flush([
+                {
+                    created_at: '2026-11-16T00:00:00Z',
+                    name: 'v0.31.0-nightly.1',
+                },
+                { created_at: '2026-11-15T00:00:00Z', name: 'v0.30.0' },
+            ]);
+
+            expect(received).toHaveBeenCalledWith('v0.30.0');
+            http.verify();
         }
     ));
 

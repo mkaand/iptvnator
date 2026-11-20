@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { LazySnackBar } from '@iptvnator/services/lazy-snack-bar';
 import { TranslateService } from '@ngx-translate/core';
-import { BehaviorSubject, from, Observable, of } from 'rxjs';
+import { BehaviorSubject, from, Observable, of, Subject } from 'rxjs';
 import { catchError, map, tap, timeout } from 'rxjs/operators';
 import {
     createDevLogger,
@@ -49,6 +49,7 @@ export class EpgService {
 
     private epgAvailable = new BehaviorSubject<boolean>(false);
     private currentEpgPrograms = new BehaviorSubject<EpgProgram[]>([]);
+    private cacheInvalidated = new Subject<void>();
 
     /** Channel icons/display names; same scope ladder as the programmes. */
     private readonly channelMetadata = new EpgChannelMetadataLookup(
@@ -101,6 +102,7 @@ export class EpgService {
 
     readonly epgAvailable$ = this.epgAvailable.asObservable();
     readonly currentEpgPrograms$ = this.currentEpgPrograms.asObservable();
+    readonly cacheInvalidated$ = this.cacheInvalidated.asObservable();
 
     /**
      * Fetches EPG from the given URLs
@@ -264,5 +266,6 @@ export class EpgService {
      */
     clearCache(): void {
         this.programCache.clear();
+        this.cacheInvalidated.next();
     }
 }

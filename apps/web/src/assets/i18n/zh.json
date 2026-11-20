@@ -659,7 +659,17 @@
             "DISABLED_TOAST": "家长控制已禁用",
             "PIN_CHANGED_TOAST": "PIN 码已更改",
             "LOCKED_TOAST": "已锁定"
-        }
+        },
+        "EPG_AUTO_REFRESH": "自动刷新节目指南",
+        "EPG_AUTO_REFRESH_DESC": "应用运行时自动更新已配置的 XMLTV 来源。",
+        "EPG_REFRESH_ON_STARTUP": "启动时刷新节目指南",
+        "EPG_REFRESH_ON_STARTUP_DESC": "启动 IPTVnator 时强制刷新已保存的节目指南来源。",
+        "EPG_REFRESH_INTERVAL": "刷新间隔",
+        "EPG_REFRESH_INTERVAL_DESC": "选择一种自动刷新频率。",
+        "STARTUP_BEHAVIOR_PLAY_LAST_CHANNEL": "播放上次观看的直播频道",
+        "APP_UPDATE_NO_RELEASE": "没有可用版本",
+        "APP_UPDATE_AUTO_CHECK": "自动检查更新",
+        "APP_UPDATE_AUTO_CHECK_DESCRIPTION": "默认关闭。您仍可随时手动检查。"
     },
     "SERVER_STORAGE": {
         "WRITE_FAILED": "无法保存到服务器。请检查连接后重试。",
@@ -1946,7 +1956,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "正在移除缓存的分类...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "收藏、观看历史、隐藏分类和播放进度会保留，以便同步后恢复。",
             "XTREAM_REFRESH_PROGRESS": "已处理本地记录：{{current}} / {{total}}",
-            "RAIL_RADIO": "电台"
+            "RAIL_RADIO": "电台",
+            "RAIL_UNCLASSIFIED": "未分类"
         },
         "SOURCES": {
             "TITLE": "源",
