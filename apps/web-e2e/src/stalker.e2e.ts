@@ -927,7 +927,9 @@ test('@stalker series watched toggle — embedded series marks and clears from t
     const detailUrl = page.url();
     await page.keyboard.press('Escape');
     await expect(seriesToggle).toBeHidden();
-    await page.locator('[data-testid="series-more-menu"]').focus();
+    // Escape belongs to the detail shell, not the menu trigger button:
+    // a focused trigger can consume the key to manage its own menu.
+    await page.locator('app-portal-detail-shell').focus();
     await page.keyboard.press('Escape');
     await expect(page.locator('app-portal-detail-shell')).toHaveCount(0);
     await expect(page).toHaveURL(detailUrl);

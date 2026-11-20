@@ -40,17 +40,17 @@ const CHANNELS = [
     {
         groupTitle: 'News',
         name: 'Channel Alpha',
-        url: 'https://streams.example.test/alpha.m3u8',
+        url: 'https://streams.example.test/live/alpha.m3u8',
     },
     {
         groupTitle: 'News',
         name: 'Channel Beta',
-        url: 'https://streams.example.test/beta.m3u8',
+        url: 'https://streams.example.test/live/beta.m3u8',
     },
     {
         groupTitle: 'Sports',
         name: 'Channel Gamma',
-        url: 'https://streams.example.test/gamma.m3u8',
+        url: 'https://streams.example.test/live/gamma.m3u8',
     },
 ];
 
@@ -88,7 +88,8 @@ async function storedItemCount(
 async function reopenPlaylist(page: Page, sourceTitle: string): Promise<void> {
     await openSources(page);
     await sourceRowByTitle(page, sourceTitle).first().click();
-    await page.waitForURL(/\/workspace\/playlists\/.+\/all$/);
+    // Source selection restores its remembered section, not necessarily All.
+    await waitForM3uCatalog(page);
 }
 
 function readStorage(page: Page, key: string): Promise<string | null> {
