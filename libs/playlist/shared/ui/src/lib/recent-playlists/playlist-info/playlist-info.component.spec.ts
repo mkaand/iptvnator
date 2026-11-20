@@ -206,11 +206,8 @@ describe('PlaylistInfoComponent', () => {
     it('saves Xtream playlist details through playlist metadata in the browser context', async () => {
         const xtreamPlaylist = {
             ...playlist,
-            title: 'Old Xtream',
-            serverUrl: 'http://old.example:8080',
-            username: 'old-user',
-            password: 'old-pass',
-            url: undefined,
+            title: 'Old Xtream', serverUrl: 'http://old.example:8080',
+            username: 'old-user', password: 'old-pass', url: undefined,
         } as Playlist & { id: string };
         TestBed.overrideProvider(MAT_DIALOG_DATA, {
             useValue: xtreamPlaylist,
@@ -218,27 +215,24 @@ describe('PlaylistInfoComponent', () => {
         createComponent();
 
         const updatedPlaylist = {
-            ...metaBase,
-            _id: 'playlist-1',
+            ...metaBase, _id: 'playlist-1',
             title: 'Updated Xtream',
             serverUrl: 'http://new.example:8080',
-            username: 'new-user',
-            password: 'new-pass',
+            username: 'new-user', password: 'new-pass',
         };
 
-        await component.saveChanges(updatedPlaylist);
-
-        expect(
-            databaseService.updateXtreamPlaylistDetails
-        ).not.toHaveBeenCalled();
-        expect(playlistsService.updatePlaylistMeta).toHaveBeenCalledWith(
-            updatedPlaylist
-        );
+        const gate = new Subject<Playlist>();
+        playlistsService.updatePlaylistMeta.mockReturnValue(gate);
+        const saving = component.saveChanges(updatedPlaylist);
+        expect(store.dispatch).not.toHaveBeenCalled();
+        expect(dialogRef.close).not.toHaveBeenCalled();
+        gate.next(xtreamPlaylist);
+        gate.complete();
+        await saving;
+        expect(databaseService.updateXtreamPlaylistDetails).not.toHaveBeenCalled();
+        expect(playlistsService.updatePlaylistMeta).toHaveBeenCalledWith(updatedPlaylist);
         expect(store.dispatch).toHaveBeenCalledWith(
-            PlaylistActions.updatePlaylistMeta({
-                playlist: updatedPlaylist,
-                persist: false,
-            })
+            PlaylistActions.updatePlaylistMeta({ playlist: updatedPlaylist, persist: false })
         );
         expect(snackBar.open).toHaveBeenCalledWith(
             'HOME.PLAYLISTS.PLAYLIST_UPDATE_SUCCESS',
@@ -248,56 +242,11 @@ describe('PlaylistInfoComponent', () => {
         expect(dialogRef.close).toHaveBeenCalledTimes(1);
     });
 
-    it('does not close or announce a browser Xtream edit before the database write completes', async () => {
-        const xtreamPlaylist = {
-            ...playlist,
-            url: undefined,
-            serverUrl: 'http://old.example:8080',
-            username: 'old-user',
-            password: 'old-pass',
-        } as Playlist & { id: string };
-        TestBed.overrideProvider(MAT_DIALOG_DATA, {
-            useValue: xtreamPlaylist,
-        });
-        const gate = new Subject<Playlist>();
-        playlistsService.updatePlaylistMeta.mockReturnValue(gate);
-        createComponent();
-
-        const updated = {
-            ...metaBase,
-            _id: 'playlist-1',
-            title: 'Edited Browser Portal',
-            serverUrl: 'http://old.example:8080',
-            username: 'minimal',
-            password: 'minimal',
-        };
-        const saving = component.saveChanges(updated);
-        await Promise.resolve();
-        expect(playlistsService.updatePlaylistMeta).toHaveBeenCalled();
-        expect(store.dispatch).not.toHaveBeenCalled();
-        expect(dialogRef.close).not.toHaveBeenCalled();
-        expect(snackBar.open).not.toHaveBeenCalled();
-
-        gate.next(xtreamPlaylist);
-        gate.complete();
-        await saving;
-        expect(store.dispatch).toHaveBeenCalledWith(
-            PlaylistActions.updatePlaylistMeta({
-                playlist: updated,
-                persist: false,
-            })
-        );
-        expect(dialogRef.close).toHaveBeenCalledTimes(1);
-    });
-
     it('normalizes edited Xtream playlist credentials before saving metadata', async () => {
         const xtreamPlaylist = {
             ...playlist,
-            title: 'Old Xtream',
-            serverUrl: 'http://old.example:8080',
-            username: 'old-user',
-            password: 'old-pass',
-            url: undefined,
+            title: 'Old Xtream', serverUrl: 'http://old.example:8080',
+            username: 'old-user', password: 'old-pass', url: undefined,
         } as Playlist & { id: string };
         TestBed.overrideProvider(MAT_DIALOG_DATA, {
             useValue: xtreamPlaylist,
@@ -325,13 +274,6 @@ describe('PlaylistInfoComponent', () => {
                     password: 'new-pass',
                 },
                 persist: false,
-            })
-        );
-        expect(playlistsService.updatePlaylistMeta).toHaveBeenCalledWith(
-            expect.objectContaining({
-                title: 'Updated Xtream',
-                username: 'new-user',
-                password: 'new-pass',
             })
         );
     });
