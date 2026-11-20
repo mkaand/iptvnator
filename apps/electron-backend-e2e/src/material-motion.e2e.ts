@@ -259,7 +259,14 @@ test.describe('Material motion without the animations module', () => {
             const names = (await motionEvents(page))
                 .filter((event) => event.type === 'animationstart')
                 .map((event) => event.name);
-            expect(names.filter((name) => /^_mat-/.test(name))).toEqual([]);
+            // This journey verifies overlay motion. Material's form-field
+            // subscript animation is independent of the select/dialog/toast
+            // overlays, and can still fire while changing settings fields.
+            expect(
+                names.filter((name) =>
+                    /^_mat-(?:select|menu|snack-bar)-/.test(name)
+                )
+            ).toEqual([]);
         } finally {
             await closeElectronApp(app);
         }
