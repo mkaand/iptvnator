@@ -1,13 +1,37 @@
-# IPTVnator | mkaand Community Fork
+# mkaand/iptvnator — independent fork of IPTVnator
 
 > [!IMPORTANT]
 > This is an **independent, unofficial fork** of [4gray/iptvnator](https://github.com/4gray/iptvnator), with original copyright, credits, and license retained. The fork is not affiliated with or endorsed by the upstream maintainers. Neither project provides IPTV services, subscriptions, playlists, channels, or copyrighted streams.
 
-## Catalog.6 | Windows x64 accepted build
+## Stable release — v0.30.2
 
-**Fork version:** `0.25.0-catalog.6`. Windows x64 acceptance tests completed on October 27, 2026. [Download the verified Windows installer ZIP from GitHub Actions](https://github.com/mkaand/iptvnator/actions/runs/40539331991/artifacts/12750643426) and extract `iptvnator-0.25.0-catalog.6-windows-x64-setup.exe`. The artifact is temporary and requires a GitHub login. See [Releases](https://github.com/mkaand/iptvnator/releases) for any subsequently published packages. This is an **unsigned community build** and may prompt Windows SmartScreen.
+[![Fork latest release](https://img.shields.io/github/v/release/mkaand/iptvnator?label=Fork%20stable&logo=github)](https://github.com/mkaand/iptvnator/releases/latest)
+[![Fork CI](https://img.shields.io/github/actions/workflow/status/mkaand/iptvnator/ci.yml?branch=master&label=Fork%20CI&logo=github)](https://github.com/mkaand/iptvnator/actions/workflows/ci.yml)
 
-The fork preserves IPTVnator's original functionality and adds focused improvements for real-world M3U, XMLTV/EPG, playback, and browsing workflows. It works with the user's own legal playlists and programme guide, without rewriting source M3U or XMLTV content.
+**Released November 21, 2026.** [Release notes and all downloads](https://github.com/mkaand/iptvnator/releases/tag/v0.30.2) · [Latest stable fork release](https://github.com/mkaand/iptvnator/releases/latest)
+
+| Platform | Download / availability |
+| --- | --- |
+| Windows x64 | [Setup EXE](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-windows-x64-setup.exe) |
+| Linux x64 | [DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-amd64.deb) · [AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x86_64.AppImage) · [RPM](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x86_64.rpm) · [Pacman](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x64.pacman) · [Flatpak](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x86_64.flatpak) · [Snap](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-amd64.snap) |
+| Linux ARM64 / ARMv7 | [ARM64 DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-arm64.deb) · [ARM64 AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-arm64.AppImage) · [ARMv7 DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-armv7l.deb) · [ARMv7 AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-armv7l.AppImage) · [ARMHF Snap](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-armhf.snap) |
+| macOS Intel / Apple Silicon | No public fork installer for v0.30.2; see [macOS development and packaging](#macos-development-and-packaging). |
+
+These are fork release assets, not packages from upstream or expiring GitHub Actions artifacts. The Windows installer is a community build and may prompt SmartScreen. Availability of Linux packages does not imply that every architecture or desktop environment has been manually tested.
+
+The fork preserves IPTVnator's original functionality and adds focused improvements for real-world M3U, XMLTV/EPG, playback, and browsing workflows. It works with the user's own legal playlists and programme guide without rewriting source M3U or XMLTV content.
+
+### Update an existing fork installation
+
+For the installed Windows x64 fork:
+
+1. Open **Settings → About** and select the **Stable** update channel.
+2. Check for updates.
+3. Download the available release inside the app.
+4. Install and allow the application to close and restart.
+5. Open About to confirm the new version and verify playlists, EPG, favorites, history, and settings.
+
+The real Windows NUC upgrade from v0.30.1 to v0.30.2 passed all five acceptance steps on November 21, 2026, including preservation of user data. Windows updater metadata and the installer SHA-512 were verified before publication. Back up important data before an upgrade. This acceptance applies to the fork's installed Windows build, not to migration from an unrelated or upstream installation.
 
 ## Improvements compared with the original project
 
@@ -28,29 +52,33 @@ The fork preserves IPTVnator's original functionality and adds focused improveme
 | Playback continuity | Last live channel restoration and accurate Recently Viewed ordering | Return to familiar live content and recent selections |
 | VOD history | M3U Movies/Series entries appear under their own Recently Viewed tabs and reopen the recorded media | Keep films and episodes in the same unified viewing history as live channels |
 | Collection management | Per-type and per-playlist/global history clearing with confirmation | Remove viewing history without deleting playlists or favorites |
-| Distribution and quality | Dedicated Windows x64 installer workflow, Docker checks, typechecks, and regression tests | Reproducible fork builds and explicit acceptance testing |
+| Large M3U performance | Navigation and global search performance improvements | More responsive browsing of large mixed playlists |
+| Distribution and quality | Windows/Linux stable release packages, fork-scoped updater, cross-platform regression tests, and Docker build verification | Reproducible builds and explicit acceptance testing |
 
-### Windows validation
+### Validation and quality
 
-The Catalog.6 Windows x64 installer and Docker CI both completed successfully for commit [`17b094f`](https://github.com/mkaand/iptvnator/commit/17b094f6a6cf6389effbc4ec35d87f9b6ddc30b1). User acceptance confirmed EPG initialization and persistence, Favorites and Recently Viewed EPG, five playback retries, Live TV viewing history, Movies/Series history and reopening, last-channel playback, and dark-mode favorites sorting.
+- [PR #5 — v0.30.2 release delivery](https://github.com/mkaand/iptvnator/pull/5): CI, Windows/Linux/macOS E2E, web E2E and regression checks passed before release. Windows and Linux packages were published after asset verification.
+- [PR #6 — fork CI and release policy](https://github.com/mkaand/iptvnator/pull/6): all 30 PR checks passed, including Windows, Linux, macOS Intel/Apple Silicon, Docker and CodeQL. The subsequent master checks completed with 27 successful, zero failed and two intentionally skipped checks.
+- The published v0.30.2 release contains 18 verified assets, including Windows/Linux update feeds and the Linux runtime source archive. The macOS CI results above describe the later master pipeline, not public macOS installers in v0.30.2.
+- Real Windows NUC in-app upgrade acceptance: **5/5 PASS**. The earlier Windows regression acceptance also covered EPG persistence, favorites and viewing history, playback retry and last-channel restoration.
+- Turkish-language TMDB title matching was outside the earlier Catalog.6 acceptance scope.
+- Keep private playlist/EPG URLs, Xtream credentials and real user fixtures out of commits, screenshots and CI logs.
 
-- [Windows build, tests, and temporary setup download](https://github.com/mkaand/iptvnator/actions/runs/40539331991)
-- [Docker build](https://github.com/mkaand/iptvnator/actions/runs/40539341067)
-- [Development PR #4](https://github.com/mkaand/iptvnator/pull/4)
-- **Known limitation:** Turkish-language movie/series TMDB title matching was deliberately excluded from this acceptance scope.
-- **Data safety:** Existing playlist URLs, credentials, favorites, mappings, and settings are retained. Do not post private IPTV credentials or playlist links in issue reports.
+### Classification and playback notes
+
+Manual content-type overrides are stored per playlist and can survive refreshes without rewriting the source M3U. The channel context menu supports Live TV / Movies / Series / Unclassified and Reset to Automatic; selection and batch classification remain available. The Favorites EPG path avoids submitting the entire mixed movie/episode inventory for programme matching. Ambiguous PHP/script or extensionless streams may use bounded MIME-aware playback routing; it does not bypass provider authentication, CORS, incompatible codecs or access restrictions. Embedded MPV does not provide native Picture-in-Picture.
 
 ### Development and attribution
 
 This community fork was developed and iteratively refined **with OpenAI Codex assistance**, guided by user requirements, code review, GitHub Actions checks, and hands-on Windows acceptance testing. AI-assisted changes are reviewed against the actual repository and acceptance results; the original upstream project's authorship and license remain acknowledged.
 
-Upstream: [4gray/iptvnator](https://github.com/4gray/iptvnator) · Fork: [mkaand/iptvnator](https://github.com/mkaand/iptvnator) · [Fork issues](https://github.com/mkaand/iptvnator/issues)
+Upstream: [4gray/iptvnator](https://github.com/4gray/iptvnator) · Fork: [mkaand/iptvnator](https://github.com/mkaand/iptvnator) · [Fork releases](https://github.com/mkaand/iptvnator/releases)
 
 ---
 
 ## Original IPTVnator project information
 
-The following documentation, screenshots, links, and upstream release/CI badges are inherited from the original project. They describe **upstream IPTVnator**, not the fork's own release status. Please credit and support the original authors.
+The following inherited documentation, screenshots, upstream release/CI badges and community links credit the original project. They do **not** establish the fork's release status. Use the fork release section above for fork downloads; please credit and support the original authors.
 
 
 <p align="center">
@@ -171,12 +199,12 @@ scripts without changing that setting.
 |                                              Application settings                                               |                                                                                                       |
 |                    ![Application settings](./apps/website/public/screenshots/settings.webp)                     |                                                                                                       |
 
-_Note: First version of the application which was developed as a PWA is available in an extra git branch._
+_Historical upstream PWA versions are documented in the original project; the fork's current self-hosted PWA instructions are below._
 
 ## Self-hosted PWA
 
 The Docker setup builds the Angular PWA and the monorepo web backend into one
-image. The backend handles remote M3U parsing plus Xtream and Stalker proxy
+image. The fork validates Docker builds in CI but does not publish to the upstream Docker Hub namespace; build the image from this repository. The backend handles remote M3U parsing plus Xtream and Stalker proxy
 requests under `/api`, so a separate `4gray/iptvnator-backend` container is not
 required for the default self-hosted flow.
 
@@ -199,23 +227,17 @@ and Electron remote-control features are not available there. If browser
 playback fails, copy the stream URL and open it manually in an external player
 such as MPV, VLC, or IINA.
 
-## Download
+## Download — upstream distribution information
 
-Download the latest version of the application for macOS, Windows, and Linux from the [release page](https://github.com/4gray/iptvnator/releases).
-
-Alternatively, you can install the application using one of the following package managers:
+For this independent fork, use [fork stable releases](https://github.com/mkaand/iptvnator/releases/latest). The following package-manager instructions and original project release links refer to **upstream IPTVnator**, not confirmed distribution channels for this fork. The two builds must not be treated as interchangeable.
 
 ### Nightly builds
 
-Every merge into `master` is published as a prerelease in
-[4gray/iptvnator-nightly](https://github.com/4gray/iptvnator-nightly). The
-desktop app can follow them: **Settings → About → Update channel → Nightly**
-offers each new build through the built-in updater (macOS, Windows, and the
-Linux AppImage). Nightly builds are untested snapshots — they may break, and
-their database changes are permanent, so switching back to **Stable** keeps
-the installed nightly until the next stable release is newer. Back up your
-playlists first, and mention the version and commit shown in *About* when
-reporting a bug from a nightly.
+The fork updater is configured to query `mkaand/iptvnator` for both Stable and Nightly channels. Fork master builds currently validate packages without automatically publishing public Nightly releases. Use Stable for the accepted release; selecting Nightly does not guarantee a newer fork build is available.
+
+The original project's nightly distributions live in
+[4gray/iptvnator-nightly](https://github.com/4gray/iptvnator-nightly), and its
+stable distributions live in [upstream releases](https://github.com/4gray/iptvnator/releases). Nightly builds can break and introduce persistent database changes; back up playlists and mention the version and commit shown in About when reporting problems.
 
 ### Homebrew
 
@@ -270,19 +292,11 @@ the host `mpv` executable to the embedded backend by default.
 
 ## Troubleshooting
 
-### macOS: "App is damaged and can't be opened"
+### macOS: signing and distribution
 
-Older unsigned macOS builds may require removing the quarantine flag from the downloaded application:
+The fork does not publish a macOS installer or macOS updater feed with v0.30.2. On current master, Intel and Apple Silicon are still built and tested in CI; fork CI packages are ad-hoc signed and are not Developer ID-signed or notarized. They are not public stable installation packages.
 
-```bash
-xattr -c /Applications/IPTVnator.app
-```
-
-Alternatively, if the app is located in a different directory:
-
-```bash
-xattr -c ~/Downloads/IPTVnator.app
-```
+Do not disable Gatekeeper or assume an unsigned download is trusted. For the fork, use the source-build information below. For upstream macOS distribution, consult the original project's release and support information.
 
 ### Linux: chrome-sandbox Issues
 
@@ -341,6 +355,8 @@ needed.
 
 ## How to Build and Develop
 
+Clone the fork (`git clone https://github.com/mkaand/iptvnator.git`) rather than the upstream repository if you want these fork changes. For the tested certificate-free macOS CI packaging path, use current `master`, which includes PR #6.
+
 Requirements:
 
 - Node.js 22.22.3 or newer within 22.x, or 24.15.0 or newer within 24.x
@@ -371,6 +387,25 @@ The equivalent Nx command is:
 ```
 $ nx serve electron-backend
 ```
+
+### macOS development and packaging
+
+Both Intel and Apple Silicon development remain supported in the fork; running
+from source does not require a paid Apple Developer Program membership. Use the
+development prerequisites above. To produce a local package on macOS, follow the
+architecture-specific runtime preparation, build, packaging and package-layout
+checks in [the fork's build workflow](.github/workflows/build-and-make.yaml).
+The workflow adjusts the builder configuration for fork macOS jobs to use ad-hoc
+identity (`-`), `forceCodeSigning: false` and `notarize: false`, without removing
+the existing hardened runtime or entitlements. Apply the equivalent configuration
+only in your local build checkout; the unchanged root builder configuration is
+not a certificate-free standalone packaging recipe. Follow the workflow's
+architecture and Embedded MPV preparation steps before running
+`pnpm run make:app -- --publishPolicy=never`.
+
+This describes the CI-validated workflow, not a separately verified local
+installation recipe or a guarantee that a non-notarized app will pass Gatekeeper.
+There is no fork macOS automatic-update distribution at present.
 
 To start Electron with an empty, isolated data directory instead of your normal
 `~/.iptvnator` folder, set `IPTVNATOR_E2E_DATA_DIR` for that run:
@@ -483,38 +518,3 @@ in [AGENTS.md](AGENTS.md); Claude Code reads that same file directly (see
 [Claude Code setup](docs/development/agent-workflow.md#claude-code)). Development and
 documentation-maintenance conventions live in the
 [agent workflow](docs/development/agent-workflow.md).
-
-## Catalog.2 experimental preview
-
-Work in the [experimental development branch](https://github.com/mkaand/iptvnator/tree/feat/m3u-classification-playback-resilience), not the stable master release.
-
-- **Change Content Type** in the M3U channel context menu: Live TV / Movies / Series / Unclassified and **Reset to Automatic**. Movie poster cards also have a category selector.
-- Overrides are per-playlist metadata, surviving automatic M3U refreshes. Items use original stream URL plus name rather than generated channel IDs. The source M3U remains unchanged.
-- A limited HTTP HEAD check for ambiguous/PHP Video.js streams can detect HLS or MPEG-TS MIME types. Explicit TS/HLS files are unchanged. Unknown/failed checks keep original behavior.
-- No authorization credentials, response bodies, URLs, or private test fixtures are logged by this check. CORS, provider authentication, unsupported codecs, and invalid MSE streams are not bypassed.
-- Preview must pass CI and real Windows acceptance before merging or publishing a stable release.
-
-## Catalog.3 integrated Windows package
-
-Catalog.3 consolidates the M3U improvements on the feature branch pending
-Windows acceptance: persistent playlist-local manual content classifications,
-Ctrl-click selection and batch classification, clickable global search, corrected
-Movies/Unclassified rail tooltips, a usable EPG grid icon before selecting a
-channel, and Series TMDB posters/details (opt-in and page-bounded).
-
-**Favorites EPG:** The root Favorites view now resolves XMLTV only for live
-channels plus explicitly bookmarked non-live entries, rather than submitting
-the entire mixed M3U movie/episode inventory to current-programme matching.
-EPG channel keys and stored manual matching priorities are unchanged.
-
-**HTTP playback/PiP:** Script and extensionless URLs can use Video.js's
-MIME-aware HLS/TS handling. When HTML5 is selected for one of these ambiguous
-sources, the compatible Video.js engine is used for that source, retaining the
-HTML video Picture-in-Picture path. Embedded MPV still does not offer native
-PiP. This is not a guarantee that providers returning HTTP 403, inaccessible
-CORS responses or incompatible codecs will work in a browser engine.
-
-All generated test URLs are synthetic. No private provider endpoints or secrets
-are checked into this repository. The setup EXE is an unsigned Windows x64
-artifact and remains subject to real-playlist acceptance before it replaces
-the existing stable fork.
