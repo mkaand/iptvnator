@@ -40,7 +40,7 @@ const CLI_USAGE =
  * @param {string} version bare semver
  * @returns {{ label: string, matches: (name: string) => boolean }[]}
  */
-export function requiredAssetRules(version) {
+export function requiredAssetRules(version, repo = '4gray/iptvnator') {
     const exact = (label, name) => ({
         label: `${label} (${name})`,
         matches: (candidate) => candidate === name,
@@ -48,12 +48,16 @@ export function requiredAssetRules(version) {
 
     const rules = [];
 
-    for (const arch of ['x64', 'arm64']) {
-        for (const extension of ['dmg', 'zip']) {
-            const base = `iptvnator-${version}-mac-${arch}.${extension}`;
+    // Fork macOS builds are CI-only. The upstream signed release
+    // contract still requires every macOS package and updater feed.
+    if (repo === '4gray/iptvnator') {
+        for (const arch of ['x64', 'arm64']) {
+            for (const extension of ['dmg', 'zip']) {
+                const base = `iptvnator-${version}-mac-${arch}.${extension}`;
 
-            rules.push(exact('macOS', base));
-            rules.push(exact('macOS blockmap', `${base}.blockmap`));
+                rules.push(exact('macOS', base));
+                rules.push(exact('macOS blockmap', `${base}.blockmap`));
+            }
         }
     }
 
@@ -97,7 +101,7 @@ export function requiredAssetRules(version) {
 
     for (const name of [
         'latest.yml',
-        'latest-mac.yml',
+        ...(repo === '4gray/iptvnator' ? ['latest-mac.yml'] : []),
         'latest-linux.yml',
         'latest-linux-arm.yml',
         'latest-linux-arm64.yml',
@@ -119,8 +123,8 @@ export function requiredAssetRules(version) {
  * rule labels; `extras` lists assets no rule claims (informational only —
  * a new build target shows up here before the rules learn about it)
  */
-export function verifyReleaseAssets(assetNames, version) {
-    const rules = requiredAssetRules(version);
+export function verifyReleaseAssets(assetNames, version, repo = '4gray/iptvnator') {
+    const rules = requiredAssetRules(version, repo);
     const missing = rules
         .filter((rule) => !assetNames.some((name) => rule.matches(name)))
         .map((rule) => rule.label);
@@ -318,10 +322,15 @@ export async function runVerification(options, io) {
     lines.push(...verifyAuthoredBody(release.body ?? '', version, io));
 
     const assetNames = release.assets.map((asset) => asset.name);
-    const { missing, extras } = verifyReleaseAssets(assetNames, version);
+    const { missing, extras } = verifyReleaseAssets(assetNames, version, repo);
 
     for (const extra of extras) {
         lines.push(`NOTE: unrecognized asset ${extra} (not required by the rules).`);
+    }
+
+    if (repo !== '4gray/iptvnator' && extras.some((name) => /(?:-mac-(?:x64|arm64)\.|^latest-mac\.yml$)/.test(name))) {
+        lines.push('ERROR: CI-only macOS packages or updater feeds must not enter a fork stable release.');
+        return { exitCode: 1, lines };
     }
 
     if (missing.length > 0) {
@@ -332,7 +341,7 @@ export async function runVerification(options, io) {
     }
 
     lines.push(
-        `All ${requiredAssetRules(version).length} required assets present (${assetNames.length} attached).`
+        `All ${requiredAssetRules(version, repo).length} required assets present (${assetNames.length} attached).`
     );
 
     // A published release still gets its asset report — auditing one after the

@@ -199,6 +199,18 @@ pipeline is built to prevent.
 ## Draft verification
 
 The `v*` tag build creates a **draft** GitHub release.
+
+**Fork distribution policy (`mkaand/iptvnator`):** Windows and Linux stable
+drafts require the 18 assets corresponding to those platforms, including
+all Windows/Linux updater feeds and the Linux runtime source archive.
+macOS x64 and arm64 still build and test, with CI-only ad-hoc packages;
+these are not notarized installers and are excluded from public release
+assets and update feeds. macOS users may build from source locally.
+Use `pnpm run release:verify:draft -- --repo mkaand/iptvnator` to verify
+fork drafts; the upstream contract below retains its 27 required assets.
+Existing public releases are not overwritten. Publication stays manual.
+Fork Docker CI builds but does not log in to or push images to Docker Hub.
+
 `pnpm run release:verify:draft` (`tools/release/verify-draft-release.mjs`) is
 the gate that runs before a human publishes it. It is strictly read-only: it
 never publishes, edits or deletes.
