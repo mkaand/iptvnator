@@ -160,7 +160,13 @@ jobs:
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft \
               --title "IPTVnator v0.30.2 — Windows & Linux Stable" \
               --notes-file release-notes.md
-            release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "v0.30.2" and .draft == true) | .id' | head -n1)"
+            # GitHub's release-list endpoint may lag behind a successful draft creation.
+            release_id=""
+            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "v0.30.2" and .draft == true) | .id' | head -n1)"
+              if [ -n "$release_id" ]; then break; fi
+              sleep 3
+            done
             test -n "$release_id"
           fi
 
