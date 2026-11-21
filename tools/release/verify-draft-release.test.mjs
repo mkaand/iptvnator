@@ -78,6 +78,22 @@ function io(overrides = {}) {
 }
 
 describe('verifyReleaseAssets', () => {
+    it('requires exactly the 18 Windows/Linux fork release assets', () => {
+        const fork = 'mkaand/iptvnator';
+        const assets = completeAssets('0.24.0').filter(
+            (name) => !name.includes('-mac-') && name !== 'latest-mac.yml'
+        );
+        assert.equal(requiredAssetRules('0.24.0', fork).length, 18);
+        assert.deepEqual(verifyReleaseAssets(assets, '0.24.0', fork), {
+            missing: [], extras: [],
+        });
+        assert.equal(verifyReleaseAssets(assets, '0.24.0').missing.length, 9);
+        assert.equal(
+            verifyReleaseAssets(assets.filter((name) => name !== 'latest.yml'), '0.24.0', fork).missing.length,
+            1
+        );
+    });
+
     it('accepts the complete real-world asset set with no extras', () => {
         const { missing, extras } = verifyReleaseAssets(
             completeAssets('0.24.0'),
@@ -190,6 +206,22 @@ describe('parseVerifyArguments', () => {
 
 describe('runVerification', () => {
     const options = { version: '0.24.0', wait: true, repo: '4gray/iptvnator' };
+
+    it('checks a fork draft without macOS and rejects leaked CI-only assets', async () => {
+        const forkOptions = { ...options, repo: 'mkaand/iptvnator' };
+        const assets = completeAssets('0.24.0').filter(
+            (name) => !name.includes('-mac-') && name !== 'latest-mac.yml'
+        ).map((name) => ({ name }));
+        const good = await runVerification(forkOptions, io({
+            viewRelease: () => release({ assets }),
+        }));
+        assert.equal(good.exitCode, 0);
+        assert.match(good.lines.join('\n'), /All 18 required assets present/);
+        const bad = await runVerification(forkOptions, io({
+            viewRelease: () => release({ assets: [...assets, { name: 'latest-mac.yml' }] }),
+        }));
+        assert.equal(bad.exitCode, 1);
+    });
 
     it('passes a complete draft and points at the manual next steps', async () => {
         const result = await runVerification(options, io());

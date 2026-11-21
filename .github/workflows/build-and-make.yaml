@@ -747,6 +747,13 @@ jobs:
                         target.arch = ['${{ matrix.arch }}'];
                       }
                     }
+                    // Fork macOS packages are ad-hoc signed for CI only, not
+                    // Developer ID signed/notarized distribution artifacts.
+                    if (process.env.GITHUB_REPOSITORY !== '4gray/iptvnator') {
+                      pkg.mac.identity = '-';
+                      pkg.mac.forceCodeSigning = false;
+                      pkg.mac.notarize = false;
+                    }
                     fs.writeFileSync('electron-builder.json', JSON.stringify(pkg, null, 4));
                   "
 
@@ -766,7 +773,7 @@ jobs:
                   "
 
             - name: Validate macOS signing configuration
-              if: matrix.os == 'macos' && github.event_name != 'pull_request'
+              if: matrix.os == 'macos' && github.event_name != 'pull_request' && github.repository == '4gray/iptvnator'
               shell: bash
               env:
                   CSC_NAME: ${{ vars.CSC_NAME }}
@@ -813,7 +820,7 @@ jobs:
                   fi
 
             - name: Prepare macOS notarization credentials
-              if: matrix.os == 'macos' && github.event_name != 'pull_request'
+              if: matrix.os == 'macos' && github.event_name != 'pull_request' && github.repository == '4gray/iptvnator'
               shell: bash
               env:
                   APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
@@ -846,7 +853,7 @@ jobs:
                   fi
 
             - name: Make Electron app (macOS)
-              if: matrix.os == 'macos' && github.event_name != 'pull_request'
+              if: matrix.os == 'macos' && github.event_name != 'pull_request' && github.repository == '4gray/iptvnator'
               env:
                   CSC_NAME: ${{ vars.CSC_NAME }}
                   CSC_LINK: ${{ secrets.CSC_LINK }}
@@ -860,7 +867,7 @@ jobs:
               run: pnpm run make:app -- --publishPolicy=never
 
             - name: Verify signed macOS app
-              if: matrix.os == 'macos' && github.event_name != 'pull_request'
+              if: matrix.os == 'macos' && github.event_name != 'pull_request' && github.repository == '4gray/iptvnator'
               shell: bash
               run: |
                   set -euo pipefail
@@ -909,14 +916,14 @@ jobs:
                   xcrun stapler validate "${APP_PATH}"
 
             - name: Make Electron app
-              if: matrix.os != 'macos' || github.event_name == 'pull_request'
+              if: matrix.os != 'macos' || github.event_name == 'pull_request' || github.repository != '4gray/iptvnator'
               env:
                   IPTVNATOR_EMBEDDED_MPV_PLATFORM: ${{ matrix.embedded_mpv_platform || '' }}
                   IPTVNATOR_EMBEDDED_MPV_ARCH: ${{ matrix.embedded_mpv_arch || matrix.arch || '' }}
                   IPTVNATOR_LINUX_FRAME_COPY_PROFILE: ${{ matrix.linux_profile || '' }}
                   # TEMPORARY PR TEST: change this back to '0' after manually
                   # testing the macOS PR artifact with Embedded MPV included.
-                  IPTVNATOR_REQUIRE_EMBEDDED_MPV: ${{ (matrix.os == 'linux' || matrix.os == 'windows' || (matrix.os == 'macos' && github.event_name == 'pull_request')) && '1' || '0' }}
+                  IPTVNATOR_REQUIRE_EMBEDDED_MPV: ${{ (matrix.os == 'linux' || matrix.os == 'windows' || (matrix.os == 'macos' && (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master'))) && '1' || '0' }}
               run: pnpm run make:app -- --publishPolicy=never
 
             - name: Verify packaged worker layout
@@ -1306,8 +1313,21 @@ jobs:
                       exit "${PROBE_STATUS}"
                   fi
 
+            # Separate names prevent any non-notarized fork macOS package
+            # or updater feed from entering a public release asset glob.
+            - name: Upload macOS CI-only packages (fork)
+              if: matrix.os == 'macos' && github.repository != '4gray/iptvnator'
+              uses: actions/upload-artifact@v7
+              with:
+                  name: macos-${{ matrix.arch }}-ci-only
+                  path: |
+                      dist/executables/**/*.dmg
+                      dist/executables/**/*.zip
+                  if-no-files-found: error
+                  retention-days: 7
+
             - name: Upload artifacts (macOS)
-              if: matrix.os == 'macos'
+              if: matrix.os == 'macos' && github.repository == '4gray/iptvnator'
               uses: actions/upload-artifact@v7
               with:
                   name: macos-${{ matrix.arch }}-artifacts
@@ -1411,7 +1431,9 @@ jobs:
             - nightly-version
             - build-cross-platform
             - build-linux
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        # Fork master builds validate packages, without creating rolling drafts.
+        # Fork tag builds and same-repository PR builds retain draft delivery.
+        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && (github.repository == '4gray/iptvnator' || github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')) }}
         runs-on: ubuntu-latest
         concurrency:
             group: ${{ github.workflow }}-release-${{ github.event.pull_request.number || github.ref }}
@@ -1428,6 +1450,25 @@ jobs:
         steps:
             - name: Checkout code
               uses: actions/checkout@v7
+
+            - name: Protect existing public fork releases
+              id: fork-release-state
+              if: github.repository != '4gray/iptvnator' && startsWith(github.ref, 'refs/tags/v')
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  version="$(node -p 'require("./package.json").version')"
+                  if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || "$GITHUB_REF_NAME" != "v$version" ]]; then
+                      echo "::error::Fork stable tag must match the package.json version."
+                      exit 1
+                  fi
+                  published="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate | jq -s --arg tag "$GITHUB_REF_NAME" 'add | any(.[]; .draft == false and .tag_name == $tag)')"
+                  echo "published=$published" >> "$GITHUB_OUTPUT"
+                  if [[ "$published" == true ]]; then
+                      echo "::notice::This fork tag is already public; release assets will not be changed."
+                  fi
 
             - name: Download all artifacts
               uses: actions/download-artifact@v8
@@ -1619,6 +1660,10 @@ jobs:
                       echo "commitish=${HEAD_SHA}"
                   } >> "${GITHUB_OUTPUT}"
 
+                  if [[ "$IS_TAG_BUILD" == true && "$GITHUB_REPOSITORY" != '4gray/iptvnator' ]]; then
+                      BODY="$(printf '%s\n\n%s' "$BODY" 'Fork stable distribution: Windows and Linux. macOS Intel/Apple Silicon builds are validated in CI without Developer ID signing; no macOS installer or updater feed is published. Build from source on macOS.')"
+                  fi
+
                   if [ -n "${BODY}" ]; then
                       {
                           echo "body<<RELEASE_BODY_EOF"
@@ -1649,7 +1694,7 @@ jobs:
             # full current set right after. Only drafts are pruned; published
             # releases are never touched.
             - name: Prune stale draft assets
-              if: env.NIGHTLY != 'true' && (github.event_name != 'pull_request' || steps.pr-state.outputs.state == 'open')
+              if: env.NIGHTLY != 'true' && (github.event_name != 'pull_request' || steps.pr-state.outputs.state == 'open') && steps.fork-release-state.outputs.published != 'true'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RELEASE_TAG: ${{ steps.release-meta.outputs.tag }}
@@ -1672,7 +1717,7 @@ jobs:
 
             - name: Create Draft Release
               id: draft-release
-              if: env.NIGHTLY != 'true' && (github.event_name != 'pull_request' || steps.pr-state.outputs.state == 'open')
+              if: env.NIGHTLY != 'true' && (github.event_name != 'pull_request' || steps.pr-state.outputs.state == 'open') && steps.fork-release-state.outputs.published != 'true'
               uses: softprops/action-gh-release@v3
               with:
                   draft: true
@@ -1764,46 +1809,39 @@ jobs:
                       gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" --input - > /dev/null
 
 
-            # Stable releases for our fork are published only AFTER the
-            # complete, uploaded 27-asset set (including updater feeds) exists.
-            # Any failure leaves an inspectable draft, never a partial release.
-            - name: Verify and publish v0.30.2 stable release
-              if: github.repository == 'mkaand/iptvnator' && github.ref == 'refs/tags/v0.30.2' && steps.draft-release.outputs.id != ''
+            # Future stable releases are intentionally drafts until reviewed.
+            # Require the complete Windows/Linux set, never CI-only macOS
+            # artifacts, and verify the Windows updater against the installer.
+            - name: Verify fork Windows/Linux stable draft
+              if: github.repository != '4gray/iptvnator' && startsWith(github.ref, 'refs/tags/v') && steps.draft-release.outputs.id != ''
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RELEASE_ID: ${{ steps.draft-release.outputs.id }}
+                  VERSION: ${{ steps.package-version.outputs.version }}
               run: |
                   set -euo pipefail
-                  test "$(node -p 'require("./package.json").version')" = '0.30.2'
-
-                  RELEASE="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
-                  if jq -e '.draft == false and .prerelease == false and .tag_name == "v0.30.2"' <<< "${RELEASE}" > /dev/null; then
-                      echo "v0.30.2 already public; no changes."
-                      exit 0
-                  fi
-                  jq -e '.draft == true and .prerelease == false and .tag_name == "v0.30.2"' <<< "${RELEASE}" > /dev/null
-
-                  ASSETS="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100")"
-                  COUNT="$(jq 'length' <<< "${ASSETS}")"
-                  if [ "${COUNT}" != '27' ] || ! jq -e 'all(.[]; .state == "uploaded" and .size > 0)' <<< "${ASSETS}" > /dev/null; then
-                      echo "::error::Stable draft assets incomplete: found ${COUNT} instead of 27 nonempty uploads."
-                      exit 1
-                  fi
-                  for metadata in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm.yml latest-linux-arm64.yml; do
-                      if ! jq -e --arg name "${metadata}" 'any(.[]; .name == $name)' <<< "${ASSETS}" > /dev/null; then
-                          echo "::error::Missing updater feed: ${metadata}"
-                          exit 1
-                      fi
-                  done
-                  if ! jq -e 'any(.[]; .name == "iptvnator-0.30.2-windows-x64-setup.exe")' <<< "${ASSETS}" > /dev/null; then
-                      echo "::error::Windows x64 installer missing."
-                      exit 1
-                  fi
-
-                  jq -n '{tag_name:"v0.30.2",draft:false,prerelease:false}' |
-                      gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" --input - --jq '.html_url'
-                  echo "v0.30.2 stable release is public with all 27 assets."
+                  release="$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")"
+                  jq -e --arg tag "$GITHUB_REF_NAME" '.draft == true and .prerelease == false and .tag_name == $tag' <<< "$release" >/dev/null
+                  gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" > release-assets.json
+                  jq -e 'length == 18 and all(.[]; .state == "uploaded" and .size > 0)' release-assets.json >/dev/null
+                  node --input-type=module <<'NODE'
+                  import { readFileSync } from 'node:fs';
+                  import { verifyReleaseAssets } from './tools/release/verify-draft-release.mjs';
+                  const assets = JSON.parse(readFileSync('release-assets.json', 'utf8')).map(a => a.name);
+                  const result = verifyReleaseAssets(assets, process.env.VERSION, process.env.GITHUB_REPOSITORY);
+                  if (result.missing.length || result.extras.length) {
+                    throw new Error(JSON.stringify(result));
+                  }
+                  console.log('Complete 18-asset Windows/Linux set verified.');
+                  NODE
+                  feed=artifacts/windows-artifacts/latest.yml
+                  installer="artifacts/windows-artifacts/iptvnator-$VERSION-windows-x64-setup.exe"
+                  grep -Fxq "version: $VERSION" "$feed"
+                  grep -Fq "iptvnator-$VERSION-windows-x64-setup.exe" "$feed"
+                  digest="$(openssl dgst -sha512 -binary "$installer" | base64 -w0)"
+                  grep -Fq "$digest" "$feed"
+                  echo "Windows SHA-512 verified. Draft is ready for manual publication after acceptance."
 
             # ── Nightly channel ──────────────────────────────────────────
             # Drafts are invisible to anyone without write access and to

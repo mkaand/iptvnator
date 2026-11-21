@@ -15,10 +15,16 @@ on:
             - master
         tags:
             - 'v*'
+        paths-ignore:
+            - '**/*.md'
+            - 'docs/**'
+            - '.plans/**'
+            - '.codex/**'
+            - '.claude/**'
     workflow_dispatch:
         inputs:
             push:
-                description: 'Push the image to Docker Hub'
+                description: 'Push the image to Docker Hub (upstream repository only)'
                 required: true
                 type: boolean
                 default: false
@@ -56,7 +62,15 @@ jobs:
                   platforms="linux/amd64"
                   tags="4gray/iptvnator:pr-${{ github.event.pull_request.number || 'manual' }}"
 
-                  if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/master" ]]; then
+                  # A fork verifies Docker builds but never publishes to the upstream
+                  # Docker Hub namespace or requests its credentials.
+                  if [[ "${GITHUB_REPOSITORY}" != "4gray/iptvnator" ]]; then
+                    tags="${GITHUB_REPOSITORY,,}:ci-${short_sha}"
+                    if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+                      platforms="linux/amd64,linux/arm64"
+                    fi
+                    echo "Fork Docker validation: build only, no registry login or push."
+                  elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/master" ]]; then
                     publish="true"
                     platforms="linux/amd64,linux/arm64"
                     tags=$(cat <<TAGS
