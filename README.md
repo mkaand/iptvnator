@@ -49,6 +49,7 @@ The real Windows NUC upgrade from v0.30.1 to v0.30.2 passed all five acceptance 
 | Global EPG | Cold-start Favorites EPG, global Recently Viewed EPG, and selected-channel timeline reconciliation | Programme details remain available even when the source playlist is not yet open |
 | Xtream EPG | External XMLTV versus provider EPG preference and name fallback | Better compatibility with third-party guide sources |
 | Playback resilience | Up to five automatic retries for transient HLS/PHP stream failures, including temporary HTTP 403 responses | Reduce manual reconnecting while retaining bounded retries |
+| Stream format detection | MIME-aware routing for ambiguous PHP/script and extensionless live URLs, with a bounded Range fallback when servers reject HEAD | Avoid treating HLS resolver URLs as raw MPEG-TS while preserving genuine MPEG-TS playback |
 | Playback continuity | Last live channel restoration and accurate Recently Viewed ordering | Return to familiar live content and recent selections |
 | VOD history | M3U Movies/Series entries appear under their own Recently Viewed tabs and reopen the recorded media | Keep films and episodes in the same unified viewing history as live channels |
 | Collection management | Per-type and per-playlist/global history clearing with confirmation | Remove viewing history without deleting playlists or favorites |
@@ -66,7 +67,7 @@ The real Windows NUC upgrade from v0.30.1 to v0.30.2 passed all five acceptance 
 
 ### Classification and playback notes
 
-Manual content-type overrides are stored per playlist and can survive refreshes without rewriting the source M3U. The channel context menu supports Live TV / Movies / Series / Unclassified and Reset to Automatic; selection and batch classification remain available. The Favorites EPG path avoids submitting the entire mixed movie/episode inventory for programme matching. Ambiguous PHP/script or extensionless streams may use bounded MIME-aware playback routing; it does not bypass provider authentication, CORS, incompatible codecs or access restrictions. Embedded MPV does not provide native Picture-in-Picture.
+Manual content-type overrides are stored per playlist and can survive refreshes without rewriting the source M3U. The channel context menu supports Live TV / Movies / Series / Unclassified and Reset to Automatic; selection and batch classification remain available. The Favorites EPG path avoids submitting the entire mixed movie/episode inventory for programme matching. Ambiguous PHP/script or extensionless streams use bounded MIME-aware playback routing. If a server rejects the preferred HEAD probe with HTTP 405, IPTVnator can make one bounded Range request, inspect only the response headers, and close the response body before choosing HLS or MPEG-TS. This does not bypass provider authentication, CORS, incompatible codecs or access restrictions. Embedded MPV does not provide native Picture-in-Picture.
 
 ### Development and attribution
 
