@@ -1,0 +1,62 @@
+name: Cut v0.30.3 tag (one-shot)
+
+on:
+    push:
+        branches:
+            - master
+        paths:
+            - '.github/workflows/release-v0.30.3-cut.yml'
+
+permissions:
+    contents: write
+
+jobs:
+    cut-tag:
+        if: github.repository == 'mkaand/iptvnator'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 2
+
+            - name: Create exact stable tag
+              shell: bash
+              env:
+                  EXPECTED_TARGET: 23f21a98e3f18a9d18af9a6a6d27a420ebd43d8a
+                  RELEASE_TAG: v0.30.3
+                  RELEASE_VERSION: 0.30.3
+              run: |
+                  set -euo pipefail
+
+                  target="$(git rev-parse HEAD^)"
+                  if [[ "$target" != "$EXPECTED_TARGET" ]]; then
+                      echo "::error::Unexpected release target: $target"
+                      exit 1
+                  fi
+
+                  version="$(git show "$target:package.json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).version))")"
+                  if [[ "$version" != "$RELEASE_VERSION" ]]; then
+                      echo "::error::package.json version is $version, expected $RELEASE_VERSION"
+                      exit 1
+                  fi
+
+                  if ! git show "$target:CHANGELOG.md" | grep -Fq "# [$RELEASE_VERSION]"; then
+                      echo "::error::CHANGELOG section for $RELEASE_VERSION is missing."
+                      exit 1
+                  fi
+
+                  existing="$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+                  if [[ -n "$existing" ]]; then
+                      if [[ "$existing" != "$target" ]]; then
+                          echo "::error::$RELEASE_TAG already points to $existing, expected $target"
+                          exit 1
+                      fi
+                      echo "$RELEASE_TAG already points to the intended release commit."
+                      exit 0
+                  fi
+
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git tag "$RELEASE_TAG" "$target"
+                  git push origin "refs/tags/$RELEASE_TAG"
