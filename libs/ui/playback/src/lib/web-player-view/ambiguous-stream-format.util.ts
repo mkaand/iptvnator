@@ -2,8 +2,8 @@ import { getPlaybackMediaExtensionFromUrl } from '@iptvnator/playback/util';
 
 /**
  * Optional format hint for an extensionless/PHP URL. Never records URLs,
- * request headers or response bodies. A failed/blocked HEAD request leaves
- * the original player routing untouched.
+ * request headers or response bodies. A failed/blocked probe leaves the
+ * original player routing untouched.
  */
 export type AmbiguousStreamFormat = 'hls' | 'mpegts' | null;
 
@@ -40,10 +40,19 @@ export function isAmbiguousStreamUrl(url: string): boolean {
     }
 }
 
+function cancelProbeBody(response: Response): void {
+    const cancellation = response.body?.cancel();
+    if (cancellation) {
+        void cancellation.catch(() => undefined);
+    }
+}
+
 /**
- * Only a HEAD request against the already-selected stream URL is attempted.
- * No extra URL, proxy, secrets or body. Hard bounded by a 1.8s abort.
- * Only a recognized content type changes player mode. Unknown fails closed.
+ * Probe an ambiguous HTTP stream without consuming media. HEAD is preferred.
+ * Some resolver endpoints reject HEAD with 405, so exactly that status gets
+ * one bounded Range GET. The fallback body is cancelled immediately after
+ * headers are inspected so live MPEG-TS servers that ignore Range cannot keep
+ * the probe connection open. Other HTTP/network failures fail closed.
  */
 export async function probeAmbiguousStreamFormat(
     url: string,
@@ -53,15 +62,36 @@ export async function probeAmbiguousStreamFormat(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const response = await fetch(url, {
+        const headResponse = await fetch(url, {
             method: 'HEAD',
             signal: controller.signal,
             credentials: 'omit',
             cache: 'no-store',
         });
-        if (!response.ok) return null;
-        return declaredAmbiguousStreamFormat(response.url || url,
-            response.headers.get('content-type'));
+        if (headResponse.status !== 405) {
+            if (!headResponse.ok) return null;
+            return declaredAmbiguousStreamFormat(
+                headResponse.url || url,
+                headResponse.headers.get('content-type')
+            );
+        }
+
+        const rangeResponse = await fetch(url, {
+            method: 'GET',
+            headers: { Range: 'bytes=0-0' },
+            signal: controller.signal,
+            credentials: 'omit',
+            cache: 'no-store',
+        });
+        try {
+            if (!rangeResponse.ok) return null;
+            return declaredAmbiguousStreamFormat(
+                rangeResponse.url || url,
+                rangeResponse.headers.get('content-type')
+            );
+        } finally {
+            cancelProbeBody(rangeResponse);
+        }
     } catch {
         return null;
     } finally {
