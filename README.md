@@ -60,7 +60,7 @@ The real Windows NUC upgrade from v0.30.1 to v0.30.2 passed all five acceptance 
 
 - [PR #5 — v0.30.2 release delivery](https://github.com/mkaand/iptvnator/pull/5): CI, Windows/Linux/macOS E2E, web E2E and regression checks passed before release. Windows and Linux packages were published after asset verification.
 - [PR #6 — fork CI and release policy](https://github.com/mkaand/iptvnator/pull/6): all 30 PR checks passed, including Windows, Linux, macOS Intel/Apple Silicon, Docker and CodeQL. The subsequent master checks completed with 27 successful, zero failed and two intentionally skipped checks.
-- The published v0.30.3 release contains 18 verified assets, including Windows/Linux update feeds and the Linux runtime source archive. The macOS CI results above describe the later master pipeline, not public macOS installers in v0.30.2.
+- The published v0.30.3 release contains 18 verified assets, including Windows/Linux update feeds and the Linux runtime source archive. The macOS CI results above describe the later master pipeline, not public macOS installers in v0.30.3.
 - Real Windows NUC in-app upgrade acceptance: **5/5 PASS**. The earlier Windows regression acceptance also covered EPG persistence, favorites and viewing history, playback retry and last-channel restoration.
 - Turkish-language TMDB title matching was outside the earlier Catalog.6 acceptance scope.
 - Keep private playlist/EPG URLs, Xtream credentials and real user fixtures out of commits, screenshots and CI logs.
