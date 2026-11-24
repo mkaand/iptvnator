@@ -11,6 +11,12 @@ this marker — see `.changes/README.md`.
 
 <!-- next-release -->
 
+# [0.30.3](https://github.com/mkaand/iptvnator/compare/v0.30.2...v0.30.3) (2026-11-24)
+
+### Fixes
+
+- **playback** — Ambiguous PHP/script and extensionless live stream URLs now retry MIME detection with one bounded Range request when servers reject HEAD, so HLS endpoints select the correct player without breaking MPEG-TS playback. ([#8](https://github.com/mkaand/iptvnator/pull/8))
+
 # [0.24.0](https://github.com/4gray/iptvnator/compare/v0.23.0...v0.24.0) (2026-09-24)
 
 
