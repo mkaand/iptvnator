@@ -7,7 +7,7 @@
     "asset": {
         "name": "mpv-dev-lgpl-x86_64-20261107-git-55d3feb45c.7z",
         "url": "https://github.com/zhongfly/mpv-winbuild/releases/download/2026-11-07-55d3feb45c/mpv-dev-lgpl-x86_64-20261107-git-55d3feb45c.7z",
-        "sha256": "0686c4b3a0b3d43299b9784977b488f2292cd68c4e28d6c2591f429da7c6f55f"
+        "sha256": "17bff1d2e90ad06a9d98ce0fae738feb64feaf10ddd804870e0144111a9715df"
     },
     "upstream": {
         "mpvCommit": "55d3feb45c3dda1afd02b3087d3463c57d6514f7",
