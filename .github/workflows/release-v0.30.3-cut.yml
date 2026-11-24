@@ -9,6 +9,7 @@ on:
 
 permissions:
     contents: write
+    actions: write
 
 jobs:
     cut-tag:
@@ -20,7 +21,7 @@ jobs:
               with:
                   fetch-depth: 2
 
-            - name: Create exact stable tag
+            - name: Ensure exact stable tag
               shell: bash
               env:
                   EXPECTED_TARGET: 23f21a98e3f18a9d18af9a6a6d27a420ebd43d8a
@@ -29,11 +30,8 @@ jobs:
               run: |
                   set -euo pipefail
 
-                  target="$(git rev-parse HEAD^)"
-                  if [[ "$target" != "$EXPECTED_TARGET" ]]; then
-                      echo "::error::Unexpected release target: $target"
-                      exit 1
-                  fi
+                  target="$EXPECTED_TARGET"
+                  git fetch --no-tags origin "$target"
 
                   version="$(git show "$target:package.json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).version))")"
                   if [[ "$version" != "$RELEASE_VERSION" ]]; then
@@ -53,10 +51,36 @@ jobs:
                           exit 1
                       fi
                       echo "$RELEASE_TAG already points to the intended release commit."
+                  else
+                      git config user.name "github-actions[bot]"
+                      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                      git tag "$RELEASE_TAG" "$target"
+                      git push origin "refs/tags/$RELEASE_TAG"
+                  fi
+
+            - name: Dispatch stable packaging on the tag
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RELEASE_TAG: v0.30.3
+              run: |
+                  set -euo pipefail
+
+                  existing_run="$(gh run list \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --workflow build-and-make.yaml \
+                      --event workflow_dispatch \
+                      --limit 30 \
+                      --json databaseId,headBranch,status,conclusion \
+                      --jq '.[] | select(.headBranch == env.RELEASE_TAG) | .databaseId' \
+                      | head -n1)"
+
+                  if [[ -n "$existing_run" ]]; then
+                      echo "Stable packaging dispatch already exists: $existing_run"
                       exit 0
                   fi
 
-                  git config user.name "github-actions[bot]"
-                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-                  git tag "$RELEASE_TAG" "$target"
-                  git push origin "refs/tags/$RELEASE_TAG"
+                  gh workflow run build-and-make.yaml \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --ref "$RELEASE_TAG"
+                  echo "Dispatched stable packaging for $RELEASE_TAG."
