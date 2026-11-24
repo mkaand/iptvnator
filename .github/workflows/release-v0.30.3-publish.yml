@@ -1,32 +1,28 @@
 name: Publish v0.30.3 (one-shot)
 
 on:
-    workflow_run:
-        workflows:
-            - Build and Make Electron App
-        types:
-            - completed
+    push:
+        branches:
+            - master
 
 permissions:
     contents: write
-    actions: read
+    actions: write
 
 jobs:
     publish:
         if: >-
             github.repository == 'mkaand/iptvnator' &&
-            github.event.workflow_run.event == 'workflow_dispatch' &&
-            github.event.workflow_run.head_branch == 'v0.30.3' &&
-            github.event.workflow_run.head_sha == '23f21a98e3f18a9d18af9a6a6d27a420ebd43d8a' &&
-            github.event.workflow_run.conclusion == 'success'
+            github.event.head_commit.message == 'chore(release): publish v0.30.3'
         runs-on: ubuntu-latest
         steps:
-            - name: Verify and publish exact stable draft
+            - name: Dispatch exact stable tag build and publish verified draft
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RELEASE_TAG: v0.30.3
                   EXPECTED_SHA: 23f21a98e3f18a9d18af9a6a6d27a420ebd43d8a
+                  BUILD_WORKFLOW: build-and-make.yaml
               run: |
                   set -euo pipefail
 
@@ -36,50 +32,89 @@ jobs:
                       exit 1
                   fi
 
-                  release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
-                  release_id="$(jq -r '.id' <<< "$release")"
-                  tag="$(jq -r '.tag_name' <<< "$release")"
-                  draft="$(jq -r '.draft' <<< "$release")"
-                  prerelease="$(jq -r '.prerelease' <<< "$release")"
+                  verify_and_publish() {
+                      local release release_id tag draft prerelease assets
+                      if ! release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" 2>/dev/null)"; then
+                          return 2
+                      fi
 
-                  if [[ "$tag" != "$RELEASE_TAG" || "$prerelease" != "false" ]]; then
-                      echo "::error::Unexpected release identity/state."
-                      exit 1
-                  fi
+                      release_id="$(jq -r '.id' <<< "$release")"
+                      tag="$(jq -r '.tag_name' <<< "$release")"
+                      draft="$(jq -r '.draft' <<< "$release")"
+                      prerelease="$(jq -r '.prerelease' <<< "$release")"
 
-                  assets="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100")"
-                  jq -e 'length == 18 and all(.[]; .state == "uploaded" and .size > 0)' <<< "$assets" >/dev/null
-
-                  required=(
-                      "iptvnator-0.30.3-windows-x64-setup.exe"
-                      "latest.yml"
-                      "iptvnator-0.30.3-linux-amd64.deb"
-                      "iptvnator-0.30.3-linux-x86_64.AppImage"
-                      "iptvnator-0.30.3-linux-x86_64.rpm"
-                      "iptvnator-0.30.3-linux-x64.pacman"
-                      "iptvnator-0.30.3-linux-x86_64.flatpak"
-                      "linux-frame-copy-runtime-sources.tar.xz"
-                  )
-                  for name in "${required[@]}"; do
-                      jq -e --arg name "$name" 'any(.[]; .name == $name)' <<< "$assets" >/dev/null || {
-                          echo "::error::Required stable asset missing: $name"
+                      if [[ "$tag" != "$RELEASE_TAG" || "$prerelease" != "false" ]]; then
+                          echo "::error::Unexpected release identity/state."
                           exit 1
-                      }
-                  done
+                      fi
 
-                  if [[ "$draft" == "false" ]]; then
-                      echo "$RELEASE_TAG is already public with the verified asset set."
+                      assets="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100")"
+                      jq -e 'length == 18 and all(.[]; .state == "uploaded" and .size > 0)' <<< "$assets" >/dev/null || return 3
+
+                      required=(
+                          "iptvnator-0.30.3-windows-x64-setup.exe"
+                          "latest.yml"
+                          "iptvnator-0.30.3-linux-amd64.deb"
+                          "iptvnator-0.30.3-linux-x86_64.AppImage"
+                          "iptvnator-0.30.3-linux-x86_64.rpm"
+                          "iptvnator-0.30.3-linux-x64.pacman"
+                          "iptvnator-0.30.3-linux-x86_64.flatpak"
+                          "linux-frame-copy-runtime-sources.tar.xz"
+                      )
+                      for name in "${required[@]}"; do
+                          jq -e --arg name "$name" 'any(.[]; .name == $name)' <<< "$assets" >/dev/null || {
+                              echo "::error::Required stable asset missing: $name"
+                              return 3
+                          }
+                      done
+
+                      if [[ "$draft" == "false" ]]; then
+                          echo "$RELEASE_TAG is already public with the verified 18-asset set."
+                          return 0
+                      fi
+                      if [[ "$draft" != "true" ]]; then
+                          echo "::error::Expected a draft release before publication."
+                          exit 1
+                      fi
+
+                      jq -n '{draft:false, prerelease:false, make_latest:"true"}' |
+                          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" --input - >/dev/null
+
+                      release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
+                      jq -e '.draft == false and .prerelease == false' <<< "$release" >/dev/null
+                      echo "$RELEASE_TAG published after exact tag and 18-asset verification."
+                  }
+
+                  set +e
+                  verify_and_publish
+                  initial_status=$?
+                  set -e
+                  if [[ "$initial_status" == "0" ]]; then
                       exit 0
                   fi
+                  if [[ "$initial_status" != "2" && "$initial_status" != "3" ]]; then
+                      exit "$initial_status"
+                  fi
 
-                  if [[ "$draft" != "true" ]]; then
-                      echo "::error::Expected a draft release before publication."
+                  echo "Stable draft is missing or incomplete; dispatching exact tag build."
+                  dispatch_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                  gh workflow run "$BUILD_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_TAG"
+
+                  run_id=""
+                  for _ in {1..30}; do
+                      run_id="$(gh run list                           --repo "$GITHUB_REPOSITORY"                           --workflow "$BUILD_WORKFLOW"                           --event workflow_dispatch                           --branch "$RELEASE_TAG"                           --limit 20                           --json databaseId,headSha,createdAt                           --jq --arg sha "$EXPECTED_SHA" --arg started "$dispatch_started"                           '[.[] | select(.headSha == $sha and .createdAt >= $started)] | sort_by(.createdAt) | reverse | .[0].databaseId // empty')"
+                      if [[ -n "$run_id" ]]; then
+                          break
+                      fi
+                      sleep 6
+                  done
+
+                  if [[ -z "$run_id" ]]; then
+                      echo "::error::The dispatched stable build did not appear in GitHub Actions."
                       exit 1
                   fi
 
-                  jq -n '{draft:false, prerelease:false, make_latest:"true"}' |
-                      gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" --input - >/dev/null
+                  echo "Watching stable build run $run_id"
+                  gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
 
-                  published="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
-                  jq -e '.draft == false and .prerelease == false' <<< "$published" >/dev/null
-                  echo "$RELEASE_TAG published after exact tag and 18-asset verification."
+                  verify_and_publish
