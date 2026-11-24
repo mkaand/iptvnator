@@ -1,17 +1,17 @@
 {
     "schemaVersion": 1,
     "repository": "zhongfly/mpv-winbuild",
-    "releaseTag": "2026-10-23-1140d3cc29",
-    "publishedAt": "2026-10-23T21:26:10Z",
+    "releaseTag": "2026-11-07-55d3feb45c",
+    "publishedAt": "2026-11-07T20:28:46Z",
     "retentionDays": 30,
     "asset": {
-        "name": "mpv-dev-lgpl-x86_64-20261023-git-1140d3cc29.7z",
-        "url": "https://github.com/zhongfly/mpv-winbuild/releases/download/2026-10-23-1140d3cc29/mpv-dev-lgpl-x86_64-20261023-git-1140d3cc29.7z",
-        "sha256": "ac6a4511c82e00bab6009a51f94e4a81445531ceeb29c43100469b23456c8b1b"
+        "name": "mpv-dev-lgpl-x86_64-20261107-git-55d3feb45c.7z",
+        "url": "https://github.com/zhongfly/mpv-winbuild/releases/download/2026-11-07-55d3feb45c/mpv-dev-lgpl-x86_64-20261107-git-55d3feb45c.7z",
+        "sha256": "0686c4b3a0b3d43299b9784977b488f2292cd68c4e28d6c2591f429da7c6f55f"
     },
     "upstream": {
-        "mpvCommit": "1140d3cc2974d60b3f8f14fa366ce6dde759f12c",
-        "buildRunUrl": "https://github.com/zhongfly/mpv-winbuild/actions/runs/40023542174",
+        "mpvCommit": "55d3feb45c3dda1afd02b3087d3463c57d6514f7",
+        "buildRunUrl": "https://github.com/zhongfly/mpv-winbuild/actions/runs/42345101530",
         "licenseClaim": "Upstream labels this libmpv build LGPLv2.1+ with statically linked LGPLv3 FFmpeg; IPTVnator verifies the checksum and archive layout, not the complete transitive license closure."
     }
 }
