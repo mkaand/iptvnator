@@ -3,19 +3,19 @@
 > [!IMPORTANT]
 > This is an **independent, unofficial fork** of [4gray/iptvnator](https://github.com/4gray/iptvnator), with original copyright, credits, and license retained. The fork is not affiliated with or endorsed by the upstream maintainers. Neither project provides IPTV services, subscriptions, playlists, channels, or copyrighted streams.
 
-## Stable release — v0.30.2
+## Stable release — v0.30.3
 
 [![Fork latest release](https://img.shields.io/github/v/release/mkaand/iptvnator?label=Fork%20stable&logo=github)](https://github.com/mkaand/iptvnator/releases/latest)
 [![Fork CI](https://img.shields.io/github/actions/workflow/status/mkaand/iptvnator/ci.yml?branch=master&label=Fork%20CI&logo=github)](https://github.com/mkaand/iptvnator/actions/workflows/ci.yml)
 
-**Released November 21, 2026.** [Release notes and all downloads](https://github.com/mkaand/iptvnator/releases/tag/v0.30.2) · [Latest stable fork release](https://github.com/mkaand/iptvnator/releases/latest)
+**Released November 24, 2026.** [Release notes and all downloads](https://github.com/mkaand/iptvnator/releases/tag/v0.30.3) · [Latest stable fork release](https://github.com/mkaand/iptvnator/releases/latest)
 
 | Platform | Download / availability |
 | --- | --- |
-| Windows x64 | [Setup EXE](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-windows-x64-setup.exe) |
-| Linux x64 | [DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-amd64.deb) · [AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x86_64.AppImage) · [RPM](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x86_64.rpm) · [Pacman](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x64.pacman) · [Flatpak](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-x86_64.flatpak) · [Snap](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-amd64.snap) |
-| Linux ARM64 / ARMv7 | [ARM64 DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-arm64.deb) · [ARM64 AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-arm64.AppImage) · [ARMv7 DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-armv7l.deb) · [ARMv7 AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-armv7l.AppImage) · [ARMHF Snap](https://github.com/mkaand/iptvnator/releases/download/v0.30.2/iptvnator-0.30.2-linux-armhf.snap) |
-| macOS Intel / Apple Silicon | No public fork installer for v0.30.2; see [macOS development and packaging](#macos-development-and-packaging). |
+| Windows x64 | [Setup EXE](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-windows-x64-setup.exe) |
+| Linux x64 | [DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-amd64.deb) · [AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-x86_64.AppImage) · [RPM](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-x86_64.rpm) · [Pacman](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-x64.pacman) · [Flatpak](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-x86_64.flatpak) · [Snap](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-amd64.snap) |
+| Linux ARM64 / ARMv7 | [ARM64 DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-arm64.deb) · [ARM64 AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-arm64.AppImage) · [ARMv7 DEB](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-armv7l.deb) · [ARMv7 AppImage](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-armv7l.AppImage) · [ARMHF Snap](https://github.com/mkaand/iptvnator/releases/download/v0.30.3/iptvnator-0.30.3-linux-armhf.snap) |
+| macOS Intel / Apple Silicon | No public fork installer for v0.30.3; see [macOS development and packaging](#macos-development-and-packaging). |
 
 These are fork release assets, not packages from upstream or expiring GitHub Actions artifacts. The Windows installer is a community build and may prompt SmartScreen. Availability of Linux packages does not imply that every architecture or desktop environment has been manually tested.
 
@@ -60,7 +60,7 @@ The real Windows NUC upgrade from v0.30.1 to v0.30.2 passed all five acceptance 
 
 - [PR #5 — v0.30.2 release delivery](https://github.com/mkaand/iptvnator/pull/5): CI, Windows/Linux/macOS E2E, web E2E and regression checks passed before release. Windows and Linux packages were published after asset verification.
 - [PR #6 — fork CI and release policy](https://github.com/mkaand/iptvnator/pull/6): all 30 PR checks passed, including Windows, Linux, macOS Intel/Apple Silicon, Docker and CodeQL. The subsequent master checks completed with 27 successful, zero failed and two intentionally skipped checks.
-- The published v0.30.2 release contains 18 verified assets, including Windows/Linux update feeds and the Linux runtime source archive. The macOS CI results above describe the later master pipeline, not public macOS installers in v0.30.2.
+- The published v0.30.3 release contains 18 verified assets, including Windows/Linux update feeds and the Linux runtime source archive. The macOS CI results above describe the later master pipeline, not public macOS installers in v0.30.2.
 - Real Windows NUC in-app upgrade acceptance: **5/5 PASS**. The earlier Windows regression acceptance also covered EPG persistence, favorites and viewing history, playback retry and last-channel restoration.
 - Turkish-language TMDB title matching was outside the earlier Catalog.6 acceptance scope.
 - Keep private playlist/EPG URLs, Xtream credentials and real user fixtures out of commits, screenshots and CI logs.
